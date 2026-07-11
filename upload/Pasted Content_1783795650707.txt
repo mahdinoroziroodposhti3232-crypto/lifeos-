@@ -1,0 +1,352 @@
+PS C:\Users\Dear user\Downloads\workspace> node -v
+v24.18.0
+PS C:\Users\Dear user\Downloads\workspace> npm -v
+npm : File C:\Program Files\nodejs\npm.ps1 cannot be loaded. The file C:\Program 
+Files\nodejs\npm.ps1 is not digitally signed. You cannot run this script on the current system. For 
+more information about running scripts and setting execution policy, see about_Execution_Policies 
+at https:/go.microsoft.com/fwlink/?LinkID=135170.
+At line:1 char:1
++ npm -v
++ ~~~
+    + CategoryInfo          : SecurityError: (:) [], PSSecurityException
+    + FullyQualifiedErrorId : UnauthorizedAccess
+PS C:\Users\Dear user\Downloads\workspace> npm.cmd install
+⠹^CTerminate batch job (Y/N)? y
+PS C:\Users\Dear user\Downloads\workspace> npm.cmd config set registry https://registry.npmmirror.com
+
+PS C:\Users\Dear user\Downloads\workspace> npm.cmd install
+⠸^CTerminate batch job (Y/N)? y
+PS C:\Users\Dear user\Downloads\workspace> .\bun.exe install
+[9.95ms] ".env"
+bun install v1.3.14 (0d9b296a)
+  🚚 next... warn: @prisma/client's postinstall cost you 39.8s
+
++ @tailwindcss/postcss@4.1.18
++ @types/react@19.2.8
++ @types/react-dom@19.2.3
++ bun-types@1.3.6
++ eslint@9.39.2
++ eslint-config-next@16.1.3
++ tailwindcss@4.1.18
++ tw-animate-css@1.4.0
++ typescript@5.9.3
++ @dnd-kit/core@6.3.1
++ @dnd-kit/sortable@10.0.0
++ @dnd-kit/utilities@3.2.2
++ @hookform/resolvers@5.2.2
++ @mdxeditor/editor@3.52.3
++ @prisma/client@6.19.2
++ @radix-ui/react-accordion@1.2.12
++ @radix-ui/react-alert-dialog@1.1.15
++ @radix-ui/react-aspect-ratio@1.1.8
++ @radix-ui/react-avatar@1.1.11
++ @radix-ui/react-checkbox@1.3.3
++ @radix-ui/react-collapsible@1.1.12
++ @radix-ui/react-context-menu@2.2.16
++ @radix-ui/react-dialog@1.1.15
++ @radix-ui/react-dropdown-menu@2.1.16
++ @radix-ui/react-hover-card@1.1.15
++ @radix-ui/react-label@2.1.8
++ @radix-ui/react-menubar@1.1.16
++ @radix-ui/react-navigation-menu@1.2.14
++ @radix-ui/react-popover@1.1.15
++ @radix-ui/react-progress@1.1.8
++ @radix-ui/react-radio-group@1.3.8
++ @radix-ui/react-scroll-area@1.2.10
++ @radix-ui/react-select@2.2.6
++ @radix-ui/react-separator@1.1.8
++ @radix-ui/react-slider@1.3.6
++ @radix-ui/react-slot@1.2.4
++ @radix-ui/react-switch@1.2.6
++ @radix-ui/react-tabs@1.1.13
++ @radix-ui/react-toast@1.2.15
++ @radix-ui/react-toggle@1.1.10
++ @radix-ui/react-toggle-group@1.1.11
++ @radix-ui/react-tooltip@1.2.8
++ @reactuses/core@6.1.9
++ @tanstack/react-query@5.90.19
++ @tanstack/react-table@8.21.3
++ @types/bcryptjs@3.0.0
++ bcryptjs@3.0.3
++ class-variance-authority@0.7.1
++ clsx@2.1.1
++ cmdk@1.1.1
++ date-fns@4.1.0
++ date-fns-jalali@4.4.0-0
++ embla-carousel-react@8.6.0
++ framer-motion@12.26.2
++ input-otp@1.4.2
++ jalaali-js@2.0.0
++ lucide-react@0.525.0
++ next@16.1.3
++ next-auth@4.24.13
++ next-intl@4.7.0
++ next-themes@0.4.6
++ prisma@6.19.2
++ react@19.2.3
++ react-day-picker@9.13.0
++ react-dom@19.2.3
++ react-hook-form@7.71.1
++ react-markdown@10.1.0
++ react-resizable-panels@3.0.6
++ react-syntax-highlighter@15.6.6
++ recharts@2.15.4
++ sharp@0.34.5
++ sonner@2.0.7
++ tailwind-merge@3.4.0
++ tailwindcss-animate@1.0.7
++ uuid@11.1.0
++ vaul@1.1.2
++ z-ai-web-dev-sdk@0.0.18
++ zod@4.3.5
++ zustand@5.0.10
+
+822 packages installed [342.13s]
+PS C:\Users\Dear user\Downloads\workspace> .\bun.exe x prisma db push
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+Datasource "db": SQLite database "custom.db" at "file:/home/z/my-project/db/custom.db"
+
+SQLite database custom.db created at file:/home/z/my-project/db/custom.db
+
+Your database is now in sync with your Prisma schema. Done in 108ms
+
+✔ Generated Prisma Client (v6.19.2) to .\node_modules\@prisma\client in 82ms
+┌─────────────────────────────────────────────────────────┐
+│  Update available 6.19.2 -> 7.8.0                       │
+│                                                         │
+│  This is a major update - please follow the guide at    │
+│  https://pris.ly/d/major-version-upgrade                │
+│                                                         │
+│  Run the following to update                            │
+│    npm i --save-dev prisma@latest                       │
+│    npm i @prisma/client@latest                          │
+└─────────────────────────────────────────────────────────┘
+
+PS C:\Users\Dear user\Downloads\workspace> .\bun.exe run dev
+$ next dev -p 3000 2>&1 | tee dev.log
+bun: command not found: tee
+PS C:\Users\Dear user\Downloads\workspace> .\bun.exe run next dev -p 3000
+▲ Next.js 16.1.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://192.168.1.103:3000
+- Environments: .env
+
+✓ Starting...
+✓ Ready in 575ms
+○ Compiling / ...
+ GET / 200 in 3.4s (compile: 3.1s, render: 292ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__1ed34b48_81f5_4887_886f_744f75a5c4ca__1 404 in 486ms (compile: 306ms, render: 180ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__e4c853df_c6de_41a9_810c_c85cdf8a0ef1__2 404 in 471ms (compile: 275ms, render: 195ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__8cfdd83a_9ab0_4baf_a002_df03308b7292__0 404 in 500ms (compile: 363ms, render: 137ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__2fc1ca28_fe78_4fea_b1c1_9f6fdc23658a__3 404 in 95ms (compile: 21ms, render: 73ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__e789bad7_d1be_4f95_bba2_fa6a6927011e__5 404 in 92ms (compile: 60ms, render: 32ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__57d92f12_1bff_408d_88d4_1e4c638b8afa__4 404 in 94ms (compile: 36ms, render: 59ms)
+ GET /api/auth/session 200 in 456ms (compile: 401ms, render: 55ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__3baf08a3_ee30_47ae_be43_024deb7f1801__0 404 in 99ms (compile: 9ms, render: 90ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__a2be1383_362f_44d2_99ac_26163fe43826__1 404 in 68ms (compile: 14ms, render: 53ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__79a74ecc_833e_4d70_8bde_a6f3e52f0316__2 404 in 67ms (compile: 26ms, render: 41ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__3c7cc831_b3a0_4625_9150_255bc9dffacd__0 404 in 98ms (compile: 10ms, render: 88ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__27ff6d45_0f36_4db4_8b52_f46fbe424826__1 404 in 64ms (compile: 13ms, render: 52ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__1f3e9fd8_4a6a_4fbd_a7ad_03ea01a4b996__2 404 in 64ms (compile: 29ms, render: 36ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__a9e04c0b_6535_4554_b413_391121af295f__0 404 in 96ms (compile: 8ms, render: 87ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__47783d8a_263b_4603_933e_a5c059990608__1 404 in 65ms (compile: 12ms, render: 53ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__ebdbbee9_92c1_4f54_aee5_8ddf9a2c5bd9__2 404 in 65ms (compile: 33ms, render: 31ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__ccd03a4f_e69c_4a95_bbcb_6581b1affd30__0 404 in 127ms (compile: 8ms, render: 118ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__bda58461_f917_482f_a89a_549b92cb9ef6__2 404 in 92ms (compile: 23ms, render: 70ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__adee481f_9442_4157_b1e2_4183e7a8926f__1 404 in 94ms (compile: 42ms, render: 52ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__6b7264e6_865c_46cf_bb86_dd71f61a3c83__0 404 in 42ms (compile: 11ms, render: 32ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__6c92c3d7_a80f_4d1d_b92e_af7fba72da5b__1 404 in 43ms (compile: 11ms, render: 32ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__86d90453_700d_4ba5_b248_53f677cd9cad__2 404 in 38ms (compile: 12ms, render: 26ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__fda9f199_d102_48a0_81d0_81d439e2ad7f__0 404 in 44ms (compile: 10ms, render: 34ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__297c7ab2_369e_4e5f_877b_ea62e499f86b__1 404 in 39ms (compile: 11ms, render: 29ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__897dd460_24bf_41b5_8a71_6db21be23447__2 404 in 38ms (compile: 11ms, render: 27ms)
+ POST /api/auth/_log 200 in 683ms (compile: 670ms, render: 13ms)
+ GET /api/auth/providers 200 in 43ms (compile: 8ms, render: 35ms)
+ GET /api/auth/csrf 200 in 42ms (compile: 3ms, render: 40ms)
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`password`, `main`.`User`.`name`, `main`.`User`.`avatar`, `main`.`User`.`bio`, `main`.`User`.`timezone`, `main`.`User`.`calendarType`, `main`.`User`.`theme`, `main`.`User`.`language`, `main`.`User`.`createdAt`, `main`.`User`.`updatedAt` FROM `main`.`User` WHERE (`main`.`User`.`email` = ? AND 1=1) LIMIT ? OFFSET ?
+ POST /api/auth/callback/credentials 401 in 78ms (compile: 5ms, render: 73ms)
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`password`, `main`.`User`.`name`, `main`.`User`.`avatar`, `main`.`User`.`bio`, `main`.`User`.`timezone`, `main`.`User`.`calendarType`, `main`.`User`.`theme`, `main`.`User`.`language`, `main`.`User`.`createdAt`, `main`.`User`.`updatedAt` FROM `main`.`User` WHERE (`main`.`User`.`email` = ? AND 1=1) LIMIT ? OFFSET ?
+prisma:query INSERT INTO `main`.`User` (`id`, `email`, `password`, `name`, `timezone`, `calendarType`, `theme`, `language`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `email` AS `email`, `password` AS `password`, `name` AS `name`, `avatar` AS `avatar`, `bio` AS `bio`, `timezone` AS `timezone`, `calendarType` AS `calendarType`, `theme` AS `theme`, `language` AS `language`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+prisma:query BEGIN IMMEDIATE
+prisma:query INSERT INTO `main`.`Label` (`id`, `name`, `color`, `userId`) VALUES (?,?,?,?), (?,?,?,?), (?,?,?,?), (?,?,?,?), (?,?,?,?)
+prisma:query COMMIT
+ POST /api/auth/register 201 in 418ms (compile: 119ms, render: 299ms)
+ GET /api/auth/providers 200 in 24ms (compile: 8ms, render: 16ms)
+ GET /api/auth/csrf 200 in 12ms (compile: 3ms, render: 9ms)
+prisma:query SELECT `main`.`User`.`id`, `main`.`User`.`email`, `main`.`User`.`password`, `main`.`User`.`name`, `main`.`User`.`avatar`, `main`.`User`.`bio`, `main`.`User`.`timezone`, `main`.`User`.`calendarType`, `main`.`User`.`theme`, `main`.`User`.`language`, `main`.`User`.`createdAt`, `main`.`User`.`updatedAt` FROM `main`.`User` WHERE (`main`.`User`.`email` = ? AND 1=1) LIMIT ? OFFSET ?
+ POST /api/auth/callback/credentials 200 in 266ms (compile: 4ms, render: 262ms)
+ GET /api/auth/session 200 in 38ms (compile: 2ms, render: 36ms)
+ GET / 200 in 40ms (compile: 6ms, render: 34ms)
+prisma:query SELECT `main`.`Task`.`id`, `main`.`Task`.`title`, `main`.`Task`.`description`, `main`.`Task`.`status`, `main`.`Task`.`priority`, `main`.`Task`.`dueDate`, `main`.`Task`.`dueTime`, `main`.`Task`.`reminderAt`, `main`.`Task`.`repeatRule`, `main`.`Task`.`isArchived`, `main`.`Task`.`order`, `main`.`Task`.`projectId`, `main`.`Task`.`labelId`, `main`.`Task`.`parentId`, `main`.`Task`.`estimatedMinutes`, `main`.`Task`.`createdAt`, `main`.`Task`.`updatedAt`, `main`.`Task`.`userId` FROM `main`.`Task` WHERE `main`.`Task`.`userId` = ? ORDER BY `main`.`Task`.`order` ASC LIMIT ? OFFSET ?
+ GET /api/auth/session 200 in 34ms (compile: 3ms, render: 32ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__24ef259a_0e82_4cd6_8fd5_42f463fd7e9a__0 404 in 86ms (compile: 6ms, render: 80ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__0e87c1cd_9bf1_45df_9fea_5c4dbbcbc4d9__1 404 in 55ms (compile: 6ms, render: 48ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__aaa1d661_d013_4c67_a10f_2c92022e18e8__2 404 in 54ms (compile: 24ms, render: 30ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__900e5759_45b7_4216_b066_d1b4e3a572e3__3 404 in 94ms (compile: 7ms, render: 86ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__27003512_8efc_4ad1_a6e2_7903e46914f7__4 404 in 61ms (compile: 8ms, render: 53ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__bb2f2153_8ed0_4de7_96f1_438fd53c671e__5 404 in 60ms (compile: 26ms, render: 34ms)
+prisma:query SELECT `main`.`Task`.`id`, `main`.`Task`.`title`, `main`.`Task`.`description`, `main`.`Task`.`status`, `main`.`Task`.`priority`, `main`.`Task`.`dueDate`, `main`.`Task`.`dueTime`, `main`.`Task`.`reminderAt`, `main`.`Task`.`repeatRule`, `main`.`Task`.`isArchived`, `main`.`Task`.`order`, `main`.`Task`.`projectId`, `main`.`Task`.`labelId`, `main`.`Task`.`parentId`, `main`.`Task`.`estimatedMinutes`, `main`.`Task`.`createdAt`, `main`.`Task`.`updatedAt`, `main`.`Task`.`userId` FROM `main`.`Task` WHERE `main`.`Task`.`userId` = ? ORDER BY `main`.`Task`.`order` ASC LIMIT ? OFFSET ?
+ GET /api/tasks 200 in 19ms (compile: 4ms, render: 14ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__c0e82b1d_053c_4c56_80e5_5013f5a93b94__0 404 in 114ms (compile: 14ms, render: 100ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__0b232303_3348_4771_9e81_0e7727e92fce__1 404 in 72ms (compile: 20ms, render: 53ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__1274639f_d305_4836_887a_1941edc489ed__2 404 in 72ms (compile: 39ms, render: 33ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__caac4b53_916c_4e67_ac06_94a77e06f9a0__0 404 in 97ms (compile: 10ms, render: 87ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__3bc682f2_7b15_45d0_83a8_c75470b3f682__2 404 in 59ms (compile: 31ms, render: 27ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__97bf8f31_c80b_4d58_b4f6_708e959e3901__1 404 in 60ms (compile: 14ms, render: 47ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__a6d296de_8e2b_4738_8c3f_540dbf84622b__0 404 in 94ms (compile: 11ms, render: 83ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__e043624e_eae5_43c1_abae_8173e63c3a63__1 404 in 61ms (compile: 13ms, render: 48ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__175bd81e_3a9f_4b08_a33e_b20aee0e0f04__2 404 in 60ms (compile: 32ms, render: 28ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__123b4a9e_eaab_4ec8_9b86_81d89d008255__0 404 in 38ms (compile: 12ms, render: 26ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__9772e838_10da_47df_bcfd_6584d3e43a0b__1 404 in 63ms (compile: 14ms, render: 49ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__992183ac_71a2_4329_99a7_317756be226f__2 404 in 63ms (compile: 29ms, render: 34ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__5ea17bae_32d0_46ee_826c_cfa9e9042140__0 404 in 88ms (compile: 10ms, render: 78ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__7cc77b3a_858e_41de_aa9b_850b42e792bc__1 404 in 57ms (compile: 13ms, render: 44ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__20ae74d1_1446_4952_8197_34a823b1da2e__2 404 in 57ms (compile: 31ms, render: 26ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__aa9487b1_5a77_417c_9321_236f14b46200__0 404 in 95ms (compile: 10ms, render: 85ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__34c0e6d6_ff61_483a_986e_851b49133858__1 404 in 64ms (compile: 13ms, render: 51ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__68e72ebd_3e4f_4a55_99e2_4373c3b01698__2 404 in 64ms (compile: 30ms, render: 34ms)
+prisma:query SELECT 1
+prisma:query INSERT INTO `main`.`User` (`id`, `email`, `password`, `name`, `timezone`, `calendarType`, `theme`, `language`, `createdAt`, `updatedAt`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `email` AS `email`, `password` AS `password`, `name` AS `name`, `avatar` AS `avatar`, `bio` AS `bio`, `timezone` AS `timezone`, `calendarType` AS `calendarType`, `theme` AS `theme`, `language` AS `language`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`
+prisma:query DELETE FROM `main`.`HabitRecord` WHERE `main`.`HabitRecord`.`userId` = ?
+prisma:query DELETE FROM `main`.`Milestone` WHERE `main`.`Milestone`.`userId` = ?
+prisma:query DELETE FROM `main`.`Task` WHERE `main`.`Task`.`userId` = ?
+prisma:query DELETE FROM `main`.`FocusSession` WHERE `main`.`FocusSession`.`userId` = ?
+prisma:query DELETE FROM `main`.`CalendarEvent` WHERE `main`.`CalendarEvent`.`userId` = ?
+prisma:query DELETE FROM `main`.`Note` WHERE `main`.`Note`.`userId` = ?
+prisma:query DELETE FROM `main`.`Habit` WHERE `main`.`Habit`.`userId` = ?
+prisma:query DELETE FROM `main`.`Goal` WHERE `main`.`Goal`.`userId` = ?
+prisma:query DELETE FROM `main`.`Project` WHERE `main`.`Project`.`userId` = ?
+prisma:query DELETE FROM `main`.`Label` WHERE `main`.`Label`.`userId` = ?
+prisma:query DELETE FROM `main`.`DashboardLayout` WHERE `main`.`DashboardLayout`.`userId` = ?
+prisma:query DELETE FROM `main`.`UserSetting` WHERE `main`.`UserSetting`.`userId` = ?
+prisma:query INSERT INTO `main`.`Label` (`id`, `name`, `color`, `userId`) VALUES (?,?,?,?) RETURNING `id` AS `id`, `name` AS `name`, `color` AS `color`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Label` (`id`, `name`, `color`, `userId`) VALUES (?,?,?,?) RETURNING `id` AS `id`, `name` AS `name`, `color` AS `color`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Label` (`id`, `name`, `color`, `userId`) VALUES (?,?,?,?) RETURNING `id` AS `id`, `name` AS `name`, `color` AS `color`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Label` (`id`, `name`, `color`, `userId`) VALUES (?,?,?,?) RETURNING `id` AS `id`, `name` AS `name`, `color` AS `color`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Label` (`id`, `name`, `color`, `userId`) VALUES (?,?,?,?) RETURNING `id` AS `id`, `name` AS `name`, `color` AS `color`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Project` (`id`, `title`, `description`, `color`, `icon`, `status`, `progress`, `startDate`, `endDate`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `color` AS `color`, `icon` AS `icon`, `status` AS `status`, `progress` AS `progress`, `startDate` AS `startDate`, `endDate` AS `endDate`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Project` (`id`, `title`, `description`, `color`, `icon`, `status`, `progress`, `startDate`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `color` AS `color`, `icon` AS `icon`, `status` AS `status`, `progress` AS `progress`, `startDate` AS `startDate`, `endDate` AS `endDate`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Project` (`id`, `title`, `description`, `color`, `icon`, `status`, `progress`, `startDate`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `color` AS `color`, `icon` AS `icon`, `status` AS `status`, `progress` AS `progress`, `startDate` AS `startDate`, `endDate` AS `endDate`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query BEGIN IMMEDIATE
+prisma:query INSERT INTO `main`.`Task` (`id`, `title`, `description`, `status`, `priority`, `dueDate`, `isArchived`, `order`, `projectId`, `labelId`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?,null,?,?,?,?), (?,?,?,?,?,?,?,?,null,?,?,?,?), (?,?,?,?,?,?,?,?,null,?,?,?,?), (?,?,?,?,?,?,?,?,null,?,?,?,?), (?,?,?,?,?,?,?,?,null,?,?,?,?), (?,?,?,?,?,?,?,?,null,?,?,?,?)
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query INSERT INTO `main`.`Goal` (`id`, `title`, `description`, `category`, `progress`, `startDate`, `endDate`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`Milestone` (`id`, `title`, `isCompleted`, `order`, `createdAt`, `updatedAt`, `goalId`, `userId`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?)
+prisma:query SELECT `main`.`Goal`.`id`, `main`.`Goal`.`title`, `main`.`Goal`.`description`, `main`.`Goal`.`category`, `main`.`Goal`.`progress`, `main`.`Goal`.`startDate`, `main`.`Goal`.`endDate`, `main`.`Goal`.`createdAt`, `main`.`Goal`.`updatedAt`, `main`.`Goal`.`userId` FROM `main`.`Goal` WHERE `main`.`Goal`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query INSERT INTO `main`.`Goal` (`id`, `title`, `description`, `category`, `progress`, `startDate`, `endDate`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`Milestone` (`id`, `title`, `isCompleted`, `order`, `createdAt`, `updatedAt`, `goalId`, `userId`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?)
+prisma:query SELECT `main`.`Goal`.`id`, `main`.`Goal`.`title`, `main`.`Goal`.`description`, `main`.`Goal`.`category`, `main`.`Goal`.`progress`, `main`.`Goal`.`startDate`, `main`.`Goal`.`endDate`, `main`.`Goal`.`createdAt`, `main`.`Goal`.`updatedAt`, `main`.`Goal`.`userId` FROM `main`.`Goal` WHERE `main`.`Goal`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query BEGIN IMMEDIATE
+prisma:query INSERT INTO `main`.`Goal` (`id`, `title`, `description`, `category`, `progress`, `startDate`, `endDate`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`
+prisma:query INSERT INTO `main`.`Milestone` (`id`, `title`, `isCompleted`, `order`, `createdAt`, `updatedAt`, `goalId`, `userId`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?)
+prisma:query SELECT `main`.`Goal`.`id`, `main`.`Goal`.`title`, `main`.`Goal`.`description`, `main`.`Goal`.`category`, `main`.`Goal`.`progress`, `main`.`Goal`.`startDate`, `main`.`Goal`.`endDate`, `main`.`Goal`.`createdAt`, `main`.`Goal`.`updatedAt`, `main`.`Goal`.`userId` FROM `main`.`Goal` WHERE `main`.`Goal`.`id` = ? LIMIT ? OFFSET ?
+prisma:query COMMIT
+prisma:query INSERT INTO `main`.`Habit` (`id`, `title`, `description`, `frequency`, `targetCount`, `color`, `icon`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `frequency` AS `frequency`, `targetCount` AS `targetCount`, `color` AS `color`, `icon` AS `icon`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Habit` (`id`, `title`, `description`, `frequency`, `targetCount`, `color`, `icon`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `frequency` AS `frequency`, `targetCount` AS `targetCount`, `color` AS `color`, `icon` AS `icon`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Habit` (`id`, `title`, `description`, `frequency`, `targetCount`, `color`, `icon`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `frequency` AS `frequency`, `targetCount` AS `targetCount`, `color` AS `color`, `icon` AS `icon`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`Habit` (`id`, `title`, `description`, `frequency`, `targetCount`, `color`, `icon`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `frequency` AS `frequency`, `targetCount` AS `targetCount`, `color` AS `color`, `icon` AS `icon`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`HabitRecord` (`id`, `date`, `count`, `createdAt`, `habitId`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `date` AS `date`, `count` AS `count`, `createdAt` AS `createdAt`, `habitId` AS `habitId`, `userId` AS `userId`
+prisma:query BEGIN IMMEDIATE
+prisma:query INSERT INTO `main`.`Note` (`id`, `title`, `content`, `color`, `isPinned`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?), (?,?,?,?,?,?,?,?)
+prisma:query COMMIT
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`FocusSession` (`id`, `type`, `duration`, `completedAt`, `createdAt`, `userId`) VALUES (?,?,?,?,?,?) RETURNING `id` AS `id`, `type` AS `type`, `duration` AS `duration`, `completedAt` AS `completedAt`, `taskId` AS `taskId`, `createdAt` AS `createdAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`CalendarEvent` (`id`, `title`, `description`, `date`, `startTime`, `endTime`, `color`, `isAllDay`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `date` AS `date`, `startTime` AS `startTime`, `endTime` AS `endTime`, `color` AS `color`, `isAllDay` AS `isAllDay`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`CalendarEvent` (`id`, `title`, `description`, `date`, `startTime`, `endTime`, `color`, `isAllDay`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `date` AS `date`, `startTime` AS `startTime`, `endTime` AS `endTime`, `color` AS `color`, `isAllDay` AS `isAllDay`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`CalendarEvent` (`id`, `title`, `description`, `date`, `startTime`, `endTime`, `color`, `isAllDay`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `date` AS `date`, `startTime` AS `startTime`, `endTime` AS `endTime`, `color` AS `color`, `isAllDay` AS `isAllDay`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`CalendarEvent` (`id`, `title`, `description`, `date`, `startTime`, `endTime`, `color`, `isAllDay`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `date` AS `date`, `startTime` AS `startTime`, `endTime` AS `endTime`, `color` AS `color`, `isAllDay` AS `isAllDay`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+prisma:query INSERT INTO `main`.`CalendarEvent` (`id`, `title`, `description`, `date`, `startTime`, `endTime`, `color`, `isAllDay`, `createdAt`, `updatedAt`, `userId`) VALUES (?,?,?,?,?,?,?,?,?,?,?) RETURNING `id` AS `id`, `title` AS `title`, `description` AS `description`, `date` AS `date`, `startTime` AS `startTime`, `endTime` AS `endTime`, `color` AS `color`, `isAllDay` AS `isAllDay`, `createdAt` AS `createdAt`, `updatedAt` AS `updatedAt`, `userId` AS `userId`
+ POST /api/seed 200 in 591ms (compile: 93ms, render: 498ms)
+prisma:query SELECT `main`.`Task`.`id`, `main`.`Task`.`title`, `main`.`Task`.`description`, `main`.`Task`.`status`, `main`.`Task`.`priority`, `main`.`Task`.`dueDate`, `main`.`Task`.`dueTime`, `main`.`Task`.`reminderAt`, `main`.`Task`.`repeatRule`, `main`.`Task`.`isArchived`, `main`.`Task`.`order`, `main`.`Task`.`projectId`, `main`.`Task`.`labelId`, `main`.`Task`.`parentId`, `main`.`Task`.`estimatedMinutes`, `main`.`Task`.`createdAt`, `main`.`Task`.`updatedAt`, `main`.`Task`.`userId` FROM `main`.`Task` WHERE `main`.`Task`.`userId` = ? ORDER BY `main`.`Task`.`order` ASC LIMIT ? OFFSET ?
+ GET /api/tasks 200 in 36ms (compile: 4ms, render: 32ms)
+prisma:query SELECT `main`.`Notification`.`id`, `main`.`Notification`.`title`, `main`.`Notification`.`body`, `main`.`Notification`.`type`, `main`.`Notification`.`read`, `main`.`Notification`.`actionUrl`, `main`.`Notification`.`entityId`, `main`.`Notification`.`entityType`, `main`.`Notification`.`dueAt`, `main`.`Notification`.`createdAt`, `main`.`Notification`.`userId` FROM `main`.`Notification` WHERE `main`.`Notification`.`userId` = ? ORDER BY `main`.`Notification`.`createdAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Note`.`id`, `main`.`Note`.`title`, `main`.`Note`.`content`, `main`.`Note`.`color`, `main`.`Note`.`isPinned`, `main`.`Note`.`createdAt`, `main`.`Note`.`updatedAt`, `main`.`Note`.`userId` FROM `main`.`Note` WHERE `main`.`Note`.`userId` = ? ORDER BY `main`.`Note`.`updatedAt` DESC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Habit`.`id`, `main`.`Habit`.`title`, `main`.`Habit`.`description`, `main`.`Habit`.`frequency`, `main`.`Habit`.`targetCount`, `main`.`Habit`.`color`, `main`.`Habit`.`icon`, `main`.`Habit`.`createdAt`, `main`.`Habit`.`updatedAt`, `main`.`Habit`.`userId` FROM `main`.`Habit` WHERE `main`.`Habit`.`userId` = ? ORDER BY `main`.`Habit`.`createdAt` ASC LIMIT ? OFFSET ?
+prisma:query SELECT `main`.`Label`.`id`, `main`.`Label`.`name`, `main`.`Label`.`color`, `main`.`Label`.`userId` FROM `main`.`Label` WHERE `main`.`Label`.`userId` = ? ORDER BY `main`.`Label`.`name` ASC LIMIT ? OFFSET ?
+ GET /api/notifications 200 in 333ms (compile: 168ms, render: 165ms)
+ GET /api/notes 200 in 275ms (compile: 164ms, render: 111ms)
+ GET /api/habits 200 in 315ms (compile: 176ms, render: 139ms)
+ GET /api/labels 200 in 317ms (compile: 232ms, render: 86ms)
+prisma:query SELECT `main`.`Project`.`id`, `main`.`Project`.`title`, `main`.`Project`.`description`, `main`.`Project`.`color`, `main`.`Project`.`icon`, `main`.`Project`.`status`, `main`.`Project`.`progress`, `main`.`Project`.`startDate`, `main`.`Project`.`endDate`, `main`.`Project`.`createdAt`, `main`.`Project`.`updatedAt`, `main`.`Project`.`userId`, COALESCE(`aggr_selection_0_Task`.`_aggr_count_tasks`, 0) AS `_aggr_count_tasks` FROM `main`.`Project` LEFT JOIN (SELECT `main`.`Task`.`projectId`, COUNT(*) AS `_aggr_count_tasks` FROM `main`.`Task` WHERE 1=1 GROUP BY `main`.`Task`.`projectId`) AS `aggr_selection_0_Task` ON (`main`.`Project`.`id` = `aggr_selection_0_Task`.`projectId`) WHERE `main`.`Project`.`userId` = ? ORDER BY `main`.`Project`.`createdAt` DESC LIMIT ? OFFSET ?
+ GET /api/projects 200 in 321ms (compile: 261ms, render: 59ms)
+prisma:query SELECT `main`.`Goal`.`id`, `main`.`Goal`.`title`, `main`.`Goal`.`description`, `main`.`Goal`.`category`, `main`.`Goal`.`progress`, `main`.`Goal`.`startDate`, `main`.`Goal`.`endDate`, `main`.`Goal`.`createdAt`, `main`.`Goal`.`updatedAt`, `main`.`Goal`.`userId` FROM `main`.`Goal` WHERE `main`.`Goal`.`userId` = ? ORDER BY `main`.`Goal`.`createdAt` DESC LIMIT ? OFFSET ?
+ GET /api/goals 200 in 328ms (compile: 293ms, render: 34ms)
+prisma:query SELECT `main`.`FocusSession`.`id`, `main`.`FocusSession`.`type`, `main`.`FocusSession`.`duration`, `main`.`FocusSession`.`completedAt`, `main`.`FocusSession`.`taskId`, `main`.`FocusSession`.`createdAt`, `main`.`FocusSession`.`userId` FROM `main`.`FocusSession` WHERE `main`.`FocusSession`.`userId` = ? ORDER BY `main`.`FocusSession`.`completedAt` DESC LIMIT ? OFFSET ?
+ GET /api/focus-sessions 200 in 163ms (compile: 116ms, render: 47ms)
+prisma:query SELECT `main`.`CalendarEvent`.`id`, `main`.`CalendarEvent`.`title`, `main`.`CalendarEvent`.`description`, `main`.`CalendarEvent`.`date`, `main`.`CalendarEvent`.`startTime`, `main`.`CalendarEvent`.`endTime`, `main`.`CalendarEvent`.`color`, `main`.`CalendarEvent`.`isAllDay`, `main`.`CalendarEvent`.`createdAt`, `main`.`CalendarEvent`.`updatedAt`, `main`.`CalendarEvent`.`userId` FROM `main`.`CalendarEvent` WHERE `main`.`CalendarEvent`.`userId` = ? ORDER BY `main`.`CalendarEvent`.`date` ASC LIMIT ? OFFSET ?
+ GET /api/calendar-events 200 in 166ms (compile: 141ms, render: 25ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__84fe37ca_f9a9_4581_a91f_c93fee40f539__1 404 in 75ms (compile: 32ms, render: 42ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__c5a31eda_58bb_4f47_860c_93612886258c__0 404 in 78ms (compile: 20ms, render: 58ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__49916182_50ea_4035_9f6f_3b2d5369a45a__2 404 in 55ms (compile: 23ms, render: 32ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__3a2a647d_f411_48b2_8eb2_85fd508c0c81__0 404 in 109ms (compile: 19ms, render: 91ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__ea5e6767_8d96_4d01_9675_fe31514a9689__2 404 in 66ms (compile: 18ms, render: 48ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__c372a205_b72e_49dc_bcf9_86d61b57d485__1 404 in 69ms (compile: 33ms, render: 35ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__d1ecc465_d703_403a_9350_ad15ab94ad58__0 404 in 123ms (compile: 17ms, render: 107ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__1a83105e_c204_4a16_be74_67610446f14c__1 404 in 82ms (compile: 20ms, render: 62ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__0197e85e_50d8_492c_b65c_c0d10fc17a62__2 404 in 83ms (compile: 40ms, render: 43ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__340d90ad_60c5_4ccb_abf5_5d4b619104b6__0 404 in 113ms (compile: 17ms, render: 96ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__1baa3656_8d87_4bb3_acdb_c95b1c95ddfa__2 404 in 72ms (compile: 35ms, render: 37ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__8aee9244_03cb_4a18_b5c9_4cf958f0a0e5__1 404 in 73ms (compile: 21ms, render: 52ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__f66b42fd_c8ad_4cc0_bebf_b540f1284906__0 404 in 44ms (compile: 17ms, render: 28ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__29e6b373_8e78_4ea0_941c_93102c7fa269__2 404 in 69ms (compile: 20ms, render: 49ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__8914fe0c_c661_47da_8daf_537c21189ed1__1 404 in 71ms (compile: 35ms, render: 35ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__efa991ce_fa97_48ba_8474_a463ee871d9e__0 404 in 104ms (compile: 6ms, render: 98ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__a9f7c655_d7d5_4ce6_a6ab_ccf451bcb4e9__2 404 in 63ms (compile: 18ms, render: 45ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__3e33bac3_e4d9_46a5_a731_31400cb17598__1 404 in 63ms (compile: 31ms, render: 33ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__1aa91c11_f586_4d29_8346_92f0fb701f54__0 404 in 101ms (compile: 15ms, render: 86ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__6fc5cf53_3e7d_4eeb_8343_64733b0a317c__1 404 in 64ms (compile: 19ms, render: 45ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__61be1f4e_f7c6_400f_b3f6_d431719bf118__2 404 in 63ms (compile: 30ms, render: 33ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__7d33d220_4718_4dad_ac53_a64f2bbc64c1__0 404 in 115ms (compile: 11ms, render: 104ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__73aaea86_2a53_4fec_9e63_865b15bd6191__1 404 in 82ms (compile: 17ms, render: 65ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__c0944199_0904_4bcd_ae02_f6a6714a1612__2 404 in 82ms (compile: 39ms, render: 43ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__974e6329_a7a6_4f4a_8626_220cd16e2354__0 404 in 99ms (compile: 13ms, render: 86ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__5d2fd344_7c77_4fbd_9970_716ac647c1cd__2 404 in 65ms (compile: 32ms, render: 33ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__fade605a_2e2a_420b_905f_90c0de752204__1 404 in 66ms (compile: 19ms, render: 47ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__870aa0cf_981d_4364_a5e6_27d97e5ca634__0 404 in 99ms (compile: 13ms, render: 86ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__ba5cb16b_6f82_44f2_bd54_79f3a3be0306__1 404 in 64ms (compile: 17ms, render: 48ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__1bfdd482_0fc3_452a_92d5_d6991756ebf0__2 404 in 64ms (compile: 30ms, render: 35ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__2e48a416_5387_4240_9f4b_018e9bc41cc3__0 404 in 132ms (compile: 15ms, render: 116ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__76e1ce73_426c_4f1d_b7f1_3503c2216d61__1 404 in 97ms (compile: 41ms, render: 56ms)
+ GET /hybridaction/zybTrackerStatisticsAction?data=%7B%7D&__callback__=__cb__zybTrackerStatisticsAction__b0fa9ac2_2227_4730_92d1_7624c3756b74__2 404 in 97ms (compile: 25ms, render: 72ms)
+prisma:query SELECT 1
+prisma:query SELECT `main`.`Notification`.`id`, `main`.`Notification`.`title`, `main`.`Notification`.`body`, `main`.`Notification`.`type`, `main`.`Notification`.`read`, `main`.`Notification`.`actionUrl`, `main`.`Notification`.`entityId`, `main`.`Notification`.`entityType`, `main`.`Notification`.`dueAt`, `main`.`Notification`.`createdAt`, `main`.`Notification`.`userId` FROM `main`.`Notification` WHERE `main`.`Notification`.`userId` = ? ORDER BY `main`.`Notification`.`createdAt` DESC LIMIT ? OFFSET ?
+ GET /api/notifications 200 in 40ms (compile: 5ms, render: 35ms)
+prisma:query SELECT 1
+prisma:query SELECT `main`.`Notification`.`id`, `main`.`Notification`.`title`, `main`.`Notification`.`body`, `main`.`Notification`.`type`, `main`.`Notification`.`read`, `main`.`Notification`.`actionUrl`, `main`.`Notification`.`entityId`, `main`.`Notification`.`entityType`, `main`.`Notification`.`dueAt`, `main`.`Notification`.`createdAt`, `main`.`Notification`.`userId` FROM `main`.`Notification` WHERE `main`.`Notification`.`userId` = ? ORDER BY `main`.`Notification`.`createdAt` DESC LIMIT ? OFFSET ?
+ GET /api/notifications 200 in 32ms (compile: 3ms, render: 29ms)
+prisma:query SELECT 1
+prisma:query SELECT `main`.`Habit`.`id`, `main`.`Habit`.`title`, `main`.`Habit`.`description`, `main`.`Habit`.`frequency`, `main`.`Habit`.`targetCount`, `main`.`Habit`.`color`, `main`.`Habit`.`icon`, `main`.`Habit`.`createdAt`, `main`.`Habit`.`updatedAt`, `main`.`Habit`.`userId` FROM `main`.`Habit` WHERE `main`.`Habit`.`userId` = ? ORDER BY `main`.`Habit`.`createdAt` ASC LIMIT ? OFFSET ?
+ GET /api/habits 200 in 19ms (compile: 2ms, render: 17ms)
+prisma:query SELECT `main`.`Goal`.`id`, `main`.`Goal`.`title`, `main`.`Goal`.`description`, `main`.`Goal`.`category`, `main`.`Goal`.`progress`, `main`.`Goal`.`startDate`, `main`.`Goal`.`endDate`, `main`.`Goal`.`createdAt`, `main`.`Goal`.`updatedAt`, `main`.`Goal`.`userId` FROM `main`.`Goal` WHERE `main`.`Goal`.`userId` = ? ORDER BY `main`.`Goal`.`createdAt` DESC LIMIT ? OFFSET ?
+ GET /api/goals 200 in 25ms (compile: 3ms, render: 22ms)
+prisma:query SELECT `main`.`Notification`.`id`, `main`.`Notification`.`title`, `main`.`Notification`.`body`, `main`.`Notification`.`type`, `main`.`Notification`.`read`, `main`.`Notification`.`actionUrl`, `main`.`Notification`.`entityId`, `main`.`Notification`.`entityType`, `main`.`Notification`.`dueAt`, `main`.`Notification`.`createdAt`, `main`.`Notification`.`userId` FROM `main`.`Notification` WHERE `main`.`Notification`.`userId` = ? ORDER BY `main`.`Notification`.`createdAt` DESC LIMIT ? OFFSET ?
+ GET /api/notifications 200 in 46ms (compile: 4ms, render: 42ms)
