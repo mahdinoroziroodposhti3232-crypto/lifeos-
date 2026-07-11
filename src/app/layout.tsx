@@ -3,6 +3,7 @@ import localFont from "next/font/local";
 import "./globals.css";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { QueryProvider } from "@/components/providers/query-provider";
 
 const vazirmatn = localFont({
   src: [
@@ -25,8 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fa" dir="rtl" suppressHydrationWarning className={vazirmatn.variable}>
       <body className="font-[family-name:var(--font-vazirmatn)] antialiased">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
-          <Toaster position="top-center" dir="rtl" richColors />
+          <QueryProvider>
+            {children}
+            <Toaster position="top-center" dir="rtl" richColors />
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>

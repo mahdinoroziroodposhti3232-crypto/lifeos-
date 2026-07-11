@@ -5,7 +5,7 @@ export async function GET(request: NextRequest) {
   try {
     const labels = await db.label.findMany({
       where: {},
-      orderBy: { createdAt: 'asc' },
+      orderBy: { name: 'asc' },
     });
 
     return NextResponse.json(labels);
@@ -40,10 +40,7 @@ export async function PUT(request: NextRequest) {
 
     const label = await db.label.update({
       where: { id },
-      data: {
-        ...data,
-        updatedAt: new Date(),
-      },
+      data,
     });
     return NextResponse.json(label);
   } catch (error) {

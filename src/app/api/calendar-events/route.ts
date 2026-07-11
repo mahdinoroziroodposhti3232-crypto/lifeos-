@@ -8,16 +8,15 @@ export async function GET(request: NextRequest) {
     const to = searchParams.get('to');
 
     const where: Record<string, unknown> = {};
-
     if (from || to) {
-      where.startTime = {};
-      if (from) (where.startTime as Record<string, unknown>).gte = new Date(from);
-      if (to) (where.startTime as Record<string, unknown>).lte = new Date(to);
+      where.date = {};
+      if (from) (where.date as Record<string, unknown>).gte = from;
+      if (to) (where.date as Record<string, unknown>).lte = to;
     }
 
     const events = await db.calendarEvent.findMany({
       where,
-      orderBy: { startTime: 'asc' },
+      orderBy: { date: 'asc' },
     });
 
     return NextResponse.json(events);
@@ -34,12 +33,11 @@ export async function POST(request: NextRequest) {
       data: {
         title: body.title,
         description: body.description,
+        date: body.date,
         startTime: body.startTime,
         endTime: body.endTime,
-        allDay: body.allDay || false,
-        color: body.color,
-        location: body.location,
-        recurrence: body.recurrence,
+        isAllDay: body.isAllDay || false,
+        color: body.color || '#10b981',
         userId: body.userId || 'default',
       },
     });
@@ -50,32 +48,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { id, ...data } = body;
-    if (!id) return NextResponse.json({ error: 'شناسه رویداد الزامی است' }, { status: 400 });
-
-    const event = await db.calendarEvent.update({
-      where: { id },
-      data: {
-        ...data,
-        updatedAt: new Date(),
-      },
-    });
-    return NextResponse.json(event);
-  } catch (error) {
-    console.error('Error updating calendar event:', error);
-    return NextResponse.json({ error: 'خطا در بروزرسانی رویداد تقویم' }, { status: 500 });
-  }
-}
-
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'شناسه رویداد الزامی است' }, { status: 400 });
-
     await db.calendarEvent.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {

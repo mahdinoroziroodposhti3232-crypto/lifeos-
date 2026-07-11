@@ -8,7 +8,6 @@ export async function GET(request: NextRequest) {
     const from = searchParams.get('from');
     const to = searchParams.get('to');
 
-    // Special action: return focus stats
     if (action === 'stats') {
       const now = new Date();
       const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -17,49 +16,31 @@ export async function GET(request: NextRequest) {
       weekStart.setHours(0, 0, 0, 0);
 
       const todaySessions = await db.focusSession.findMany({
-        where: {
-          startTime: {
-            gte: todayStart,
-          },
-        },
+        where: { completedAt: { gte: todayStart } },
       });
-
       const weekSessions = await db.focusSession.findMany({
-        where: {
-          startTime: {
-            gte: weekStart,
-          },
-        },
+        where: { completedAt: { gte: weekStart } },
       });
 
-      const todayMinutes = todaySessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
-      const weekMinutes = weekSessions.reduce((sum, s) => sum + (s.durationMinutes || 0), 0);
+      const todayMinutes = todaySessions.reduce((sum, s) => sum + s.duration, 0);
+      const weekMinutes = weekSessions.reduce((sum, s) => sum + s.duration, 0);
 
       return NextResponse.json({
-        today: {
-          totalSessions: todaySessions.length,
-          totalMinutes: todayMinutes,
-          sessions: todaySessions,
-        },
-        thisWeek: {
-          totalSessions: weekSessions.length,
-          totalMinutes: weekMinutes,
-          sessions: weekSessions,
-        },
+        today: { totalSessions: todaySessions.length, totalMinutes: todayMinutes, sessions: todaySessions },
+        thisWeek: { totalSessions: weekSessions.length, totalMinutes: weekMinutes, sessions: weekSessions },
       });
     }
 
     const where: Record<string, unknown> = {};
-
     if (from || to) {
-      where.startTime = {};
-      if (from) (where.startTime as Record<string, unknown>).gte = new Date(from);
-      if (to) (where.startTime as Record<string, unknown>).lte = new Date(to);
+      where.completedAt = {};
+      if (from) (where.completedAt as Record<string, unknown>).gte = new Date(from);
+      if (to) (where.completedAt as Record<string, unknown>).lte = new Date(to);
     }
 
     const sessions = await db.focusSession.findMany({
       where,
-      orderBy: { startTime: 'desc' },
+      orderBy: { completedAt: 'desc' },
     });
 
     return NextResponse.json(sessions);
@@ -74,11 +55,8 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const session = await db.focusSession.create({
       data: {
-        title: body.title,
-        description: body.description,
-        startTime: body.startTime,
-        endTime: body.endTime,
-        durationMinutes: body.durationMinutes,
+        type: body.type || 'pomodoro',
+        duration: body.duration || 25,
         taskId: body.taskId,
         userId: body.userId || 'default',
       },
@@ -90,32 +68,11 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { id, ...data } = body;
-    if (!id) return NextResponse.json({ error: 'شناسه جلسه الزامی است' }, { status: 400 });
-
-    const session = await db.focusSession.update({
-      where: { id },
-      data: {
-        ...data,
-        updatedAt: new Date(),
-      },
-    });
-    return NextResponse.json(session);
-  } catch (error) {
-    console.error('Error updating focus session:', error);
-    return NextResponse.json({ error: 'خطا در بروزرسانی جلسه تمرکز' }, { status: 500 });
-  }
-}
-
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'شناسه جلسه الزامی است' }, { status: 400 });
-
     await db.focusSession.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
