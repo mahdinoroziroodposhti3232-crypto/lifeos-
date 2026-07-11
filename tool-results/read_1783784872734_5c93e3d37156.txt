@@ -1,0 +1,843 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useCallback, useEffect } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Plus,
+     7→  ChevronLeft,
+     8→  ChevronRight,
+     9→  Repeat,
+    10→  Trash2,
+    11→  Edit3,
+    12→  Flame,
+    13→  Check,
+    14→  Circle,
+    15→  X,
+    16→} from 'lucide-react';
+    17→import { useMutation, useQueryClient } from '@tanstack/react-query';
+    18→
+    19→import { useAppStore } from '@/lib/store';
+    20→import { toJalaali, formatJalaaliDateShort, type JalaaliDate } from '@/lib/jalali';
+    21→import { cn } from '@/lib/utils';
+    22→import {
+    23→  HABIT_FREQUENCY_LABELS,
+    24→  type Habit,
+    25→  type HabitFrequency,
+    26→} from '@/types';
+    27→
+    28→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+    29→import { Badge } from '@/components/ui/badge';
+    30→import { Button } from '@/components/ui/button';
+    31→import { Input } from '@/components/ui/input';
+    32→import { Textarea } from '@/components/ui/textarea';
+    33→import { Progress } from '@/components/ui/progress';
+    34→import {
+    35→  Dialog,
+    36→  DialogContent,
+    37→  DialogHeader,
+    38→  DialogTitle,
+    39→  DialogFooter,
+    40→} from '@/components/ui/dialog';
+    41→import {
+    42→  Select,
+    43→  SelectTrigger,
+    44→  SelectValue,
+    45→  SelectContent,
+    46→  SelectItem,
+    47→} from '@/components/ui/select';
+    48→import {
+    49→  AlertDialog,
+    50→  AlertDialogAction,
+    51→  AlertDialogCancel,
+    52→  AlertDialogContent,
+    53→  AlertDialogDescription,
+    54→  AlertDialogFooter,
+    55→  AlertDialogHeader,
+    56→  AlertDialogTitle,
+    57→} from '@/components/ui/alert-dialog';
+    58→import { EmptyState } from '@/components/layout/empty-state';
+    59→
+    60→/* ------------------------------------------------------------------ */
+    61→/*  Constants                                                          */
+    62→/* ------------------------------------------------------------------ */
+    63→
+    64→const PRESET_COLORS = [
+    65→  '#10b981',
+    66→  '#3b82f6',
+    67→  '#f59e0b',
+    68→  '#ef4444',
+    69→  '#8b5cf6',
+    70→  '#ec4899',
+    71→  '#06b6d4',
+    72→  '#f97316',
+    73→];
+    74→
+    75→const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    76→
+    77→function toPersianNum(num: number): string {
+    78→  return String(num).replace(/\d/g, (d) => persianDigits[parseInt(d)]);
+    79→}
+    80→
+    81→/* ------------------------------------------------------------------ */
+    82→/*  Helper Functions                                                   */
+    83→/* ------------------------------------------------------------------ */
+    84→
+    85→function formatDateKey(date: Date): string {
+    86→  const y = date.getFullYear();
+    87→  const m = String(date.getMonth() + 1).padStart(2, '0');
+    88→  const d = String(date.getDate()).padStart(2, '0');
+    89→  return `${y}-${m}-${d}`;
+    90→}
+    91→
+    92→function jalaaliDateKey(jd: JalaaliDate): string {
+    93→  return `${jd.jy}/${String(jd.jm).padStart(2, '0')}/${String(jd.jd).padStart(2, '0')}`;
+    94→}
+    95→
+    96→function getLast7Days(weekOffset: number): Date[] {
+    97→  const days: Date[] = [];
+    98→  const baseDate = new Date();
+    99→  baseDate.setDate(baseDate.getDate() + weekOffset * 7);
+   100→  for (let i = 6; i >= 0; i--) {
+   101→    const date = new Date(baseDate);
+   102→    date.setDate(date.getDate() - i);
+   103→    date.setHours(0, 0, 0, 0);
+   104→    days.push(date);
+   105→  }
+   106→  return days;
+   107→}
+   108→
+   109→function isRecordedForDate(habit: Habit, date: Date): boolean {
+   110→  if (!habit.records || habit.records.length === 0) return false;
+   111→  const dateStr = formatDateKey(date);
+   112→  return habit.records.some((r) => {
+   113→    const recordDate = new Date(r.date);
+   114→    return formatDateKey(recordDate) === dateStr;
+   115→  });
+   116→}
+   117→
+   118→function getRecordForDate(habit: Habit, date: Date) {
+   119→  if (!habit.records || habit.records.length === 0) return null;
+   120→  const dateStr = formatDateKey(date);
+   121→  return habit.records.find((r) => {
+   122→    const recordDate = new Date(r.date);
+   123→    return formatDateKey(recordDate) === dateStr;
+   124→  }) ?? null;
+   125→}
+   126→
+   127→function calculateStreak(habit: Habit): number {
+   128→  if (!habit.records || habit.records.length === 0) return 0;
+   129→
+   130→  const todayKey = formatDateKey(new Date());
+   131→  const recordDates = habit.records
+   132→    .map((r) => formatDateKey(new Date(r.date)))
+   133→    .sort()
+   134→    .reverse();
+   135→
+   136→  // Remove duplicates
+   137→  const uniqueDates = [...new Set(recordDates)];
+   138→
+   139→  // Check if today is recorded; if not, check yesterday (streak might still be valid)
+   140→  let startIndex = 0;
+   141→  if (uniqueDates[0] !== todayKey) {
+   142→    const yesterday = new Date();
+   143→    yesterday.setDate(yesterday.getDate() - 1);
+   144→    const yesterdayKey = formatDateKey(yesterday);
+   145→    if (uniqueDates[0] !== yesterdayKey) return 0;
+   146→  }
+   147→
+   148→  let streak = 0;
+   149→  const checkDate = new Date();
+   150→  if (uniqueDates[0] !== todayKey) {
+   151→    checkDate.setDate(checkDate.getDate() - 1);
+   152→  }
+   153→
+   154→  for (let i = 0; i < 365; i++) {
+   155→    const key = formatDateKey(checkDate);
+   156→    if (uniqueDates.includes(key)) {
+   157→      streak++;
+   158→      checkDate.setDate(checkDate.getDate() - 1);
+   159→    } else {
+   160→      break;
+   161→    }
+   162→  }
+   163→
+   164→  return streak;
+   165→}
+   166→
+   167→function calculateCompletionRate(habit: Habit, last7Days: Date[]): number {
+   168→  if (!habit.records || habit.records.length === 0) return 0;
+   169→  const completed = last7Days.filter((d) => isRecordedForDate(habit, d)).length;
+   170→  return Math.round((completed / 7) * 100);
+   171→}
+   172→
+   173→function getWeekLabel(offset: number): string {
+   174→  if (offset === 0) return 'هفته جاری';
+   175→  if (offset === -1) return 'هفته قبل';
+   176→  if (offset === 1) return 'هفته بعد';
+   177→  if (offset < -1) return `${toPersianNum(Math.abs(offset))} هفته قبل`;
+   178→  return `${toPersianNum(offset)} هفته بعد`;
+   179→}
+   180→
+   181→/* ------------------------------------------------------------------ */
+   182→/*  Habit Form Dialog State                                            */
+   183→/* ------------------------------------------------------------------ */
+   184→
+   185→interface HabitFormData {
+   186→  title: string;
+   187→  description: string;
+   188→  frequency: HabitFrequency;
+   189→  targetCount: number;
+   190→  color: string;
+   191→}
+   192→
+   193→const defaultFormData: HabitFormData = {
+   194→  title: '',
+   195→  description: '',
+   196→  frequency: 'daily',
+   197→  targetCount: 1,
+   198→  color: PRESET_COLORS[0],
+   199→};
+   200→
+   201→/* ------------------------------------------------------------------ */
+   202→/*  Component                                                          */
+   203→/* ------------------------------------------------------------------ */
+   204→
+   205→export default function HabitsPage() {
+   206→  const { habits, setHabits, settings } = useAppStore();
+   207→  const queryClient = useQueryClient();
+   208→
+   209→  const [showAddDialog, setShowAddDialog] = useState(false);
+   210→  const [editingHabit, setEditingHabit] = useState<Habit | null>(null);
+   211→  const [currentWeekOffset, setCurrentWeekOffset] = useState(0);
+   212→  const [deleteTarget, setDeleteTarget] = useState<Habit | null>(null);
+   213→
+   214→  // Form state
+   215→  const [formData, setFormData] = useState<HabitFormData>(defaultFormData);
+   216→  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+   217→
+   218→  /* ---------------------------------------------------------------- */
+   219→  /*  Fetch habits on mount                                            */
+   220→  /* ---------------------------------------------------------------- */
+   221→
+   222→  useEffect(() => {
+   223→    async function fetchHabits() {
+   224→      try {
+   225→        const res = await fetch('/api/habits');
+   226→        if (res.ok) {
+   227→          const data = await res.json();
+   228→          setHabits(data);
+   229→        }
+   230→      } catch (err) {
+   231→        console.error('Error fetching habits:', err);
+   232→      }
+   233→    }
+   234→    fetchHabits();
+   235→  }, [setHabits]);
+   236→
+   237→  /* ---------------------------------------------------------------- */
+   238→  /*  Mutations                                                        */
+   239→  /* ---------------------------------------------------------------- */
+   240→
+   241→  const createHabitMutation = useMutation({
+   242→    mutationFn: async (data: HabitFormData) => {
+   243→      const res = await fetch('/api/habits', {
+   244→        method: 'POST',
+   245→        headers: { 'Content-Type': 'application/json' },
+   246→        body: JSON.stringify({
+   247→          title: data.title,
+   248→          description: data.description || undefined,
+   249→          frequency: data.frequency,
+   250→          targetCount: data.targetCount,
+   251→          color: data.color,
+   252→          userId: 'default',
+   253→        }),
+   254→      });
+   255→      if (!res.ok) throw new Error('خطا در ایجاد عادت');
+   256→      return res.json();
+   257→    },
+   258→    onSuccess: () => {
+   259→      queryClient.invalidateQueries({ queryKey: ['habits'] });
+   260→      refetchHabits();
+   261→      closeDialog();
+   262→    },
+   263→  });
+   264→
+   265→  const updateHabitMutation = useMutation({
+   266→    mutationFn: async (data: HabitFormData & { id: string }) => {
+   267→      const res = await fetch('/api/habits', {
+   268→        method: 'PUT',
+   269→        headers: { 'Content-Type': 'application/json' },
+   270→        body: JSON.stringify({
+   271→          id: data.id,
+   272→          title: data.title,
+   273→          description: data.description || undefined,
+   274→          frequency: data.frequency,
+   275→          targetCount: data.targetCount,
+   276→          color: data.color,
+   277→        }),
+   278→      });
+   279→      if (!res.ok) throw new Error('خطا در بروزرسانی عادت');
+   280→      return res.json();
+   281→    },
+   282→    onSuccess: () => {
+   283→      queryClient.invalidateQueries({ queryKey: ['habits'] });
+   284→      refetchHabits();
+   285→      closeDialog();
+   286→    },
+   287→  });
+   288→
+   289→  const deleteHabitMutation = useMutation({
+   290→    mutationFn: async (id: string) => {
+   291→      const res = await fetch(`/api/habits?id=${id}`, {
+   292→        method: 'DELETE',
+   293→      });
+   294→      if (!res.ok) throw new Error('خطا در حذف عادت');
+   295→    },
+   296→    onSuccess: () => {
+   297→      queryClient.invalidateQueries({ queryKey: ['habits'] });
+   298→      refetchHabits();
+   299→      setDeleteTarget(null);
+   300→    },
+   301→  });
+   302→
+   303→  const toggleRecordMutation = useMutation({
+   304→    mutationFn: async ({ habitId, recordId, add }: { habitId: string; recordId?: string; add: boolean }) => {
+   305→      if (add) {
+   306→        const today = new Date();
+   307→        const res = await fetch('/api/habits/records', {
+   308→          method: 'POST',
+   309→          headers: { 'Content-Type': 'application/json' },
+   310→          body: JSON.stringify({
+   311→            habitId,
+   312→            date: today.toISOString(),
+   313→            userId: 'default',
+   314→            value: true,
+   315→          }),
+   316→        });
+   317→        if (!res.ok) throw new Error('خطا در ثبت رکورد');
+   318→        return res.json();
+   319→      } else if (recordId) {
+   320→        const res = await fetch(`/api/habits/records?id=${recordId}`, {
+   321→          method: 'DELETE',
+   322→        });
+   323→        if (!res.ok) throw new Error('خطا در حذف رکورد');
+   324→      }
+   325→    },
+   326→    onSuccess: () => {
+   327→      queryClient.invalidateQueries({ queryKey: ['habits'] });
+   328→      refetchHabits();
+   329→    },
+   330→  });
+   331→
+   332→  /* ---------------------------------------------------------------- */
+   333→  /*  Helpers                                                          */
+   334→  /* ---------------------------------------------------------------- */
+   335→
+   336→  async function refetchHabits() {
+   337→    try {
+   338→      const res = await fetch('/api/habits');
+   339→      if (res.ok) {
+   340→        const data = await res.json();
+   341→        setHabits(data);
+   342→      }
+   343→    } catch (err) {
+   344→      console.error('Error refetching habits:', err);
+   345→    }
+   346→  }
+   347→
+   348→  function openAddDialog() {
+   349→    setEditingHabit(null);
+   350→    setFormData(defaultFormData);
+   351→    setFormErrors({});
+   352→    setShowAddDialog(true);
+   353→  }
+   354→
+   355→  function openEditDialog(habit: Habit) {
+   356→    setEditingHabit(habit);
+   357→    setFormData({
+   358→      title: habit.title,
+   359→      description: habit.description || '',
+   360→      frequency: habit.frequency,
+   361→      targetCount: habit.targetCount,
+   362→      color: habit.color,
+   363→    });
+   364→    setFormErrors({});
+   365→    setShowAddDialog(true);
+   366→  }
+   367→
+   368→  function closeDialog() {
+   369→    setShowAddDialog(false);
+   370→    setEditingHabit(null);
+   371→    setFormData(defaultFormData);
+   372→    setFormErrors({});
+   373→  }
+   374→
+   375→  function validateForm(): boolean {
+   376→    const errors: Record<string, string> = {};
+   377→    if (!formData.title.trim()) {
+   378→      errors.title = 'عنوان عادت الزامی است';
+   379→    }
+   380→    setFormErrors(errors);
+   381→    return Object.keys(errors).length === 0;
+   382→  }
+   383→
+   384→  function handleSubmit() {
+   385→    if (!validateForm()) return;
+   386→    if (editingHabit) {
+   387→      updateHabitMutation.mutate({ ...formData, id: editingHabit.id });
+   388→    } else {
+   389→      createHabitMutation.mutate(formData);
+   390→    }
+   391→  }
+   392→
+   393→  function handleToggleToday(habit: Habit) {
+   394→    const today = new Date();
+   395→    today.setHours(0, 0, 0, 0);
+   396→    const existingRecord = getRecordForDate(habit, today);
+   397→
+   398→    if (existingRecord) {
+   399→      toggleRecordMutation.mutate({
+   400→        habitId: habit.id,
+   401→        recordId: existingRecord.id,
+   402→        add: false,
+   403→      });
+   404→    } else {
+   405→      toggleRecordMutation.mutate({
+   406→        habitId: habit.id,
+   407→        add: true,
+   408→      });
+   409→    }
+   410→  }
+   411→
+   412→  /* ---------------------------------------------------------------- */
+   413→  /*  Computed                                                         */
+   414→  /* ---------------------------------------------------------------- */
+   415→
+   416→  const last7Days = useMemo(() => getLast7Days(currentWeekOffset), [currentWeekOffset]);
+   417→
+   418→  const todayKey = useMemo(() => formatDateKey(new Date()), []);
+   419→
+   420→  const habitsWithStats = useMemo(() => {
+   421→    return habits.map((habit) => ({
+   422→      habit,
+   423→      streak: calculateStreak(habit),
+   424→      completionRate: calculateCompletionRate(habit, last7Days),
+   425→      isTodayCompleted: isRecordedForDate(habit, new Date()),
+   426→    }));
+   427→  }, [habits, last7Days]);
+   428→
+   429→  /* ---------------------------------------------------------------- */
+   430→  /*  Render                                                           */
+   431→  /* ---------------------------------------------------------------- */
+   432→
+   433→  return (
+   434→    <div className="flex flex-col gap-6 p-4 md:p-6 lg:p-8">
+   435→      {/* Header */}
+   436→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   437→        <div>
+   438→          <h1 className="text-2xl font-bold tracking-tight">عادت‌ها</h1>
+   439→          <p className="text-sm text-muted-foreground mt-1">
+   440→            عادت‌های خود را دنبال کنید
+   441→          </p>
+   442→        </div>
+   443→
+   444→        <Button onClick={openAddDialog} className="gap-2 rounded-xl">
+   445→          <Plus className="h-4 w-4" />
+   446→          عادت جدید
+   447→        </Button>
+   448→      </div>
+   449→
+   450→      {/* Week Navigation */}
+   451→      <div className="flex items-center justify-center gap-4">
+   452→        <Button
+   453→          variant="outline"
+   454→          size="icon"
+   455→          className="h-8 w-8 rounded-lg"
+   456→          onClick={() => setCurrentWeekOffset((prev) => prev - 1)}
+   457→        >
+   458→          <ChevronRight className="h-4 w-4" />
+   459→        </Button>
+   460→        <span className="min-w-[140px] text-center text-sm font-medium text-foreground">
+   461→          {getWeekLabel(currentWeekOffset)}
+   462→        </span>
+   463→        <Button
+   464→          variant="outline"
+   465→          size="icon"
+   466→          className="h-8 w-8 rounded-lg"
+   467→          onClick={() => setCurrentWeekOffset((prev) => prev + 1)}
+   468→          disabled={currentWeekOffset >= 0}
+   469→        >
+   470→          <ChevronLeft className="h-4 w-4" />
+   471→        </Button>
+   472→        {currentWeekOffset !== 0 && (
+   473→          <Button
+   474→            variant="ghost"
+   475→            size="sm"
+   476→            className="mr-2 text-xs text-muted-foreground"
+   477→            onClick={() => setCurrentWeekOffset(0)}
+   478→          >
+   479→            بازگشت به هفته جاری
+   480→          </Button>
+   481→        )}
+   482→      </div>
+   483→
+   484→      {/* Content */}
+   485→      {habitsWithStats.length === 0 ? (
+   486→        <EmptyState
+   487→          icon={Repeat}
+   488→          title="هنوز عادتی ثبت نکرده‌اید"
+   489→          description="با ایجاد عادت‌های جدید، بهره‌وری خود را افزایش دهید و پیشرفت روزانه خود را دنبال کنید."
+   490→          action={{
+   491→            label: '+ عادت جدید',
+   492→            onClick: openAddDialog,
+   493→          }}
+   494→        />
+   495→      ) : (
+   496→        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+   497→          <AnimatePresence mode="popLayout">
+   498→            {habitsWithStats.map(({ habit, streak, completionRate, isTodayCompleted }, index) => (
+   499→              <motion.div
+   500→                key={habit.id}
+   501→                layout
+   502→                initial={{ opacity: 0, y: 20, scale: 0.95 }}
+   503→                animate={{ opacity: 1, y: 0, scale: 1 }}
+   504→                exit={{ opacity: 0, y: -10, scale: 0.95 }}
+   505→                transition={{
+   506→                  duration: 0.3,
+   507→                  delay: index * 0.05,
+   508→                  ease: [0.25, 0.46, 0.45, 0.94],
+   509→                }}
+   510→              >
+   511→                <Card className="group relative overflow-hidden border-border/50 bg-card/80 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:border-border">
+   512→                  {/* Color accent strip */}
+   513→                  <div
+   514→                    className="absolute top-0 right-0 h-1 w-full"
+   515→                    style={{ backgroundColor: habit.color }}
+   516→                  />
+   517→
+   518→                  <CardHeader className="pb-3">
+   519→                    <div className="flex items-start justify-between gap-2">
+   520→                      <div className="flex items-center gap-2.5 min-w-0">
+   521→                        <div
+   522→                          className="h-3 w-3 shrink-0 rounded-full shadow-sm"
+   523→                          style={{ backgroundColor: habit.color }}
+   524→                        />
+   525→                        <CardTitle className="truncate text-sm font-semibold">
+   526→                          {habit.title}
+   527→                        </CardTitle>
+   528→                      </div>
+   529→
+   530→                      <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+   531→                        <Button
+   532→                          variant="ghost"
+   533→                          size="icon"
+   534→                          className="h-7 w-7"
+   535→                          onClick={() => openEditDialog(habit)}
+   536→                        >
+   537→                          <Edit3 className="h-3.5 w-3.5" />
+   538→                        </Button>
+   539→                        <Button
+   540→                          variant="ghost"
+   541→                          size="icon"
+   542→                          className="h-7 w-7 text-destructive hover:text-destructive"
+   543→                          onClick={() => setDeleteTarget(habit)}
+   544→                        >
+   545→                          <Trash2 className="h-3.5 w-3.5" />
+   546→                        </Button>
+   547→                      </div>
+   548→                    </div>
+   549→
+   550→                    {/* Description */}
+   551→                    {habit.description && (
+   552→                      <CardDescription className="mt-1 line-clamp-1 text-xs">
+   553→                        {habit.description}
+   554→                      </CardDescription>
+   555→                    )}
+   556→
+   557→                    {/* Badges row */}
+   558→                    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+   559→                      <Badge
+   560→                        variant="secondary"
+   561→                        className="text-[10px] px-2 py-0 h-5 font-medium"
+   562→                      >
+   563→                        {HABIT_FREQUENCY_LABELS[habit.frequency]}
+   564→                      </Badge>
+   565→                      <Badge
+   566→                        variant="outline"
+   567→                        className="text-[10px] px-2 py-0 h-5"
+   568→                      >
+   569→                        هدف: {toPersianNum(habit.targetCount)} بار {habit.frequency === 'daily' ? 'در روز' : habit.frequency === 'weekly' ? 'در هفته' : 'در ماه'}
+   570→                      </Badge>
+   571→                    </div>
+   572→                  </CardHeader>
+   573→
+   574→                  <CardContent className="space-y-4">
+   575→                    {/* 7-Day Contribution Grid */}
+   576→                    <div className="space-y-2">
+   577→                      <div className="flex items-center justify-between">
+   578→                        <span className="text-[11px] text-muted-foreground font-medium">
+   579→                          ۷ روز اخیر
+   580→                        </span>
+   581→                        <span className="text-[11px] text-muted-foreground">
+   582→                          {completionRate > 0 ? `${toPersianNum(completionRate)}٪` : ''}
+   583→                        </span>
+   584→                      </div>
+   585→
+   586→                      <div className="flex items-center justify-center gap-2" dir="ltr">
+   587→                        {last7Days.map((day) => {
+   588→                          const jDate = toJalaali(day);
+   589→                          const dayKey = formatDateKey(day);
+   590→                          const isRecorded = isRecordedForDate(habit, day);
+   591→                          const isToday = dayKey === todayKey;
+   592→
+   593→                          return (
+   594→                            <div key={dayKey} className="flex flex-col items-center gap-1.5">
+   595→                              <span className="text-[10px] text-muted-foreground tabular-nums">
+   596→                                {jDate.jd}
+   597→                              </span>
+   598→                              <button
+   599→                                className={cn(
+   600→                                  'h-2.5 w-2.5 rounded-full transition-all duration-200',
+   601→                                  isRecorded
+   602→                                    ? 'scale-100 shadow-sm'
+   603→                                    : 'scale-90 bg-muted-foreground/15 hover:bg-muted-foreground/25',
+   604→                                  isToday && !isRecorded && 'ring-2 ring-offset-1 ring-offset-background',
+   605→                                  isToday && 'h-3 w-3'
+   606→                                )}
+   607→                                style={
+   608→                                  isRecorded
+   609→                                    ? {
+   610→                                        backgroundColor: habit.color,
+   611→                                        boxShadow: isToday
+   612→                                          ? `0 0 8px ${habit.color}40`
+   613→                                          : `0 0 4px ${habit.color}30`,
+   614→                                      }
+   615→                                    : isToday
+   616→                                      ? { '--tw-ring-color': habit.color } as React.CSSProperties
+   617→                                      : undefined
+   618→                                }
+   619→                                title={`${jalaaliDateKey(jDate)} - ${isRecorded ? 'انجام شده' : 'انجام نشده'}`}
+   620→                              />
+   621→                            </div>
+   622→                          );
+   623→                        })}
+   624→                      </div>
+   625→                    </div>
+   626→
+   627→                    {/* Stats Row */}
+   628→                    <div className="flex items-center justify-between">
+   629→                      <div className="flex items-center gap-1.5">
+   630→                        <Flame
+   631→                          className="h-3.5 w-3.5"
+   632→                          style={{ color: streak > 0 ? '#f59e0b' : undefined }}
+   633→                        />
+   634→                        <span
+   635→                          className={cn(
+   636→                            'text-xs font-medium tabular-nums',
+   637→                            streak > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+   638→                          )}
+   639→                        >
+   640→                          {streak > 0 ? `${toPersianNum(streak)} روز متوالی` : 'بدون استریک'}
+   641→                        </span>
+   642→                      </div>
+   643→
+   644→                      <div className="flex items-center gap-1.5">
+   645→                        <Progress
+   646→                          value={completionRate}
+   647→                          className="h-1.5 w-16"
+   648→                        />
+   649→                        <span className="text-[10px] text-muted-foreground tabular-nums">
+   650→                          {toPersianNum(completionRate)}٪
+   651→                        </span>
+   652→                      </div>
+   653→                    </div>
+   654→
+   655→                    {/* Today Toggle */}
+   656→                    <Button
+   657→                      variant={isTodayCompleted ? 'outline' : 'default'}
+   658→                      size="sm"
+   659→                      className={cn(
+   660→                        'w-full gap-2 rounded-xl text-xs font-medium transition-all duration-200',
+   661→                        isTodayCompleted && 'border-green-200 bg-green-50 text-green-700 hover:bg-green-100 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400 dark:hover:bg-green-950/50'
+   662→                      )}
+   663→                      style={!isTodayCompleted ? { backgroundColor: habit.color, borderColor: habit.color } : undefined}
+   664→                      onClick={() => handleToggleToday(habit)}
+   665→                      disabled={toggleRecordMutation.isPending}
+   666→                    >
+   667→                      {isTodayCompleted ? (
+   668→                        <>
+   669→                          <Check className="h-3.5 w-3.5" />
+   670→                          امروز انجام شد
+   671→                        </>
+   672→                      ) : (
+   673→                        <>
+   674→                          <Circle className="h-3.5 w-3.5" />
+   675→                          انجام دادم امروز
+   676→                        </>
+   677→                      )}
+   678→                    </Button>
+   679→                  </CardContent>
+   680→                </Card>
+   681→              </motion.div>
+   682→            ))}
+   683→          </AnimatePresence>
+   684→        </div>
+   685→      )}
+   686→
+   687→      {/* Add/Edit Dialog */}
+   688→      <Dialog open={showAddDialog} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+   689→        <DialogContent className="sm:max-w-[460px]" dir="rtl">
+   690→          <DialogHeader>
+   691→            <DialogTitle className="text-right">
+   692→              {editingHabit ? 'ویرایش عادت' : 'عادت جدید'}
+   693→            </DialogTitle>
+   694→          </DialogHeader>
+   695→
+   696→          <div className="space-y-4 py-2">
+   697→            {/* Title */}
+   698→            <div className="space-y-2">
+   699→              <label className="text-sm font-medium text-foreground">
+   700→                عنوان <span className="text-destructive">*</span>
+   701→              </label>
+   702→              <Input
+   703→                placeholder="مثلاً: ورزش، مطالعه، مدیتیشن..."
+   704→                value={formData.title}
+   705→                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+   706→                className={cn(formErrors.title && 'border-destructive')}
+   707→              />
+   708→              {formErrors.title && (
+   709→                <p className="text-xs text-destructive">{formErrors.title}</p>
+   710→              )}
+   711→            </div>
+   712→
+   713→            {/* Description */}
+   714→            <div className="space-y-2">
+   715→              <label className="text-sm font-medium text-foreground">توضیحات</label>
+   716→              <Textarea
+   717→                placeholder="توضیح مختصری درباره این عادت..."
+   718→                value={formData.description}
+   719→                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+   720→                rows={3}
+   721→                className="resize-none"
+   722→              />
+   723→            </div>
+   724→
+   725→            {/* Frequency */}
+   726→            <div className="space-y-2">
+   727→              <label className="text-sm font-medium text-foreground">تکرار</label>
+   728→              <Select
+   729→                value={formData.frequency}
+   730→                onValueChange={(val) =>
+   731→                  setFormData((prev) => ({ ...prev, frequency: val as HabitFrequency }))
+   732→                }
+   733→              >
+   734→                <SelectTrigger className="w-full">
+   735→                  <SelectValue />
+   736→                </SelectTrigger>
+   737→                <SelectContent>
+   738→                  {(Object.entries(HABIT_FREQUENCY_LABELS) as [HabitFrequency, string][]).map(
+   739→                    ([value, label]) => (
+   740→                      <SelectItem key={value} value={value}>
+   741→                        {label}
+   742→                      </SelectItem>
+   743→                    )
+   744→                  )}
+   745→                </SelectContent>
+   746→              </Select>
+   747→            </div>
+   748→
+   749→            {/* Target Count */}
+   750→            <div className="space-y-2">
+   751→              <label className="text-sm font-medium text-foreground">
+   752→                تعداد هدف در {formData.frequency === 'daily' ? 'هر روز' : formData.frequency === 'weekly' ? 'هر هفته' : 'هر ماه'}
+   753→              </label>
+   754→              <Input
+   755→                type="number"
+   756→                min={1}
+   757→                max={100}
+   758→                value={formData.targetCount}
+   759→                onChange={(e) =>
+   760→                  setFormData((prev) => ({
+   761→                    ...prev,
+   762→                    targetCount: Math.max(1, parseInt(e.target.value) || 1),
+   763→                  }))
+   764→                }
+   765→                className="w-full"
+   766→              />
+   767→            </div>
+   768→
+   769→            {/* Color Picker */}
+   770→            <div className="space-y-2">
+   771→              <label className="text-sm font-medium text-foreground">رنگ</label>
+   772→              <div className="flex flex-wrap gap-2.5">
+   773→                {PRESET_COLORS.map((color) => (
+   774→                  <button
+   775→                    key={color}
+   776→                    type="button"
+   777→                    className={cn(
+   778→                      'h-8 w-8 rounded-full transition-all duration-200',
+   779→                      formData.color === color
+   780→                        ? 'scale-110 ring-2 ring-offset-2 ring-offset-background shadow-md'
+   781→                        : 'scale-100 hover:scale-105 opacity-70 hover:opacity-100'
+   782→                    )}
+   783→                    style={{
+   784→                      backgroundColor: color,
+   785→                      ...(formData.color === color ? { '--tw-ring-color': color } as React.CSSProperties : {}),
+   786→                    }}
+   787→                    onClick={() => setFormData((prev) => ({ ...prev, color }))}
+   788→                  />
+   789→                ))}
+   790→              </div>
+   791→            </div>
+   792→          </div>
+   793→
+   794→          <DialogFooter className="gap-2 sm:gap-2">
+   795→            <Button
+   796→              variant="outline"
+   797→              onClick={closeDialog}
+   798→              className="rounded-xl"
+   799→            >
+   800→              انصراف
+   801→            </Button>
+   802→            <Button
+   803→              onClick={handleSubmit}
+   804→              disabled={createHabitMutation.isPending || updateHabitMutation.isPending}
+   805→              className="rounded-xl"
+   806→            >
+   807→              {createHabitMutation.isPending || updateHabitMutation.isPending
+   808→                ? 'در حال ذخیره...'
+   809→                : editingHabit
+   810→                  ? 'بروزرسانی'
+   811→                  : 'ایجاد عادت'}
+   812→            </Button>
+   813→          </DialogFooter>
+   814→        </DialogContent>
+   815→      </Dialog>
+   816→
+   817→      {/* Delete Confirmation */}
+   818→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+   819→        <AlertDialogContent dir="rtl">
+   820→          <AlertDialogHeader>
+   821→            <AlertDialogTitle>حذف عادت</AlertDialogTitle>
+   822→            <AlertDialogDescription>
+   823→              آیا از حذف عادت «{deleteTarget?.title}» اطمینان دارید؟ تمام رکوردهای مرتبط نیز حذف خواهد شد. این عمل قابل بازگشت نیست.
+   824→            </AlertDialogDescription>
+   825→          </AlertDialogHeader>
+   826→          <AlertDialogFooter className="gap-2">
+   827→            <AlertDialogCancel className="rounded-xl">انصراف</AlertDialogCancel>
+   828→            <AlertDialogAction
+   829→              onClick={() => {
+   830→                if (deleteTarget) {
+   831→                  deleteHabitMutation.mutate(deleteTarget.id);
+   832→                }
+   833→              }}
+   834→              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   835→            >
+   836→              {deleteHabitMutation.isPending ? 'در حال حذف...' : 'حذف'}
+   837→            </AlertDialogAction>
+   838→          </AlertDialogFooter>
+   839→        </AlertDialogContent>
+   840→      </AlertDialog>
+   841→    </div>
+   842→  );
+   843→}

@@ -269,20 +269,37 @@ export default function NotesPage() {
   };
 
   const handleTogglePin = () => {
-    const newVal = !editingIsPinned;
+    if (!selectedNoteId) return;
+    const note = notes.find((n) => n.id === selectedNoteId);
+    if (!note) return;
+    const newVal = !note.isPinned;
     setEditingIsPinned(newVal);
-    if (selectedNoteId) {
-      setNotes(
-        notes.map((n) => (n.id === selectedNoteId ? { ...n, isPinned: newVal } : n))
-      );
-      updateNoteMutation.mutate({
-        id: selectedNoteId,
-        title: editingTitle,
-        content: editingContent,
-        color: editingColor,
-        isPinned: newVal,
-      });
-    }
+    setNotes(
+      notes.map((n) => (n.id === selectedNoteId ? { ...n, isPinned: newVal } : n))
+    );
+    updateNoteMutation.mutate({
+      id: selectedNoteId,
+      title: editingTitle,
+      content: editingContent,
+      color: editingColor,
+      isPinned: newVal,
+    });
+  };
+
+  const handleTogglePinForNote = (noteId: string) => {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note) return;
+    const newVal = !note.isPinned;
+    setNotes(
+      notes.map((n) => (n.id === noteId ? { ...n, isPinned: newVal } : n))
+    );
+    updateNoteMutation.mutate({
+      id: noteId,
+      title: note.title,
+      content: note.content,
+      color: note.color,
+      isPinned: newVal,
+    });
   };
 
   const handleDelete = (id: string) => {
@@ -329,7 +346,7 @@ export default function NotesPage() {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                handleTogglePin();
+                handleTogglePinForNote(note.id);
               }}
               className="rounded p-1 hover:bg-muted"
             >

@@ -1,0 +1,843 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useCallback } from 'react';
+     4→import { motion, AnimatePresence, type Variants } from 'framer-motion';
+     5→import {
+     6→  Plus,
+     7→  FolderKanban,
+     8→  ArrowRight,
+     9→  Clock,
+    10→  CheckCircle2,
+    11→  PauseCircle,
+    12→  Trash2,
+    13→  Calendar,
+    14→} from 'lucide-react';
+    15→import { useMutation, useQueryClient } from '@tanstack/react-query';
+    16→
+    17→import { useAppStore } from '@/lib/store';
+    18→import { formatJalaaliDateShort, toJalaali } from '@/lib/jalali';
+    19→import { cn } from '@/lib/utils';
+    20→import {
+    21→  PRIORITY_COLORS,
+    22→  PRIORITY_LABELS,
+    23→  STATUS_LABELS,
+    24→  type Project,
+    25→  type Task,
+    26→  type TaskPriority,
+    27→  type TaskStatus,
+    28→} from '@/types';
+    29→
+    30→import {
+    31→  Card,
+    32→  CardContent,
+    33→  CardHeader,
+    34→  CardTitle,
+    35→  CardDescription,
+    36→} from '@/components/ui/card';
+    37→import { Button } from '@/components/ui/button';
+    38→import { Input } from '@/components/ui/input';
+    39→import { Textarea } from '@/components/ui/textarea';
+    40→import { Badge } from '@/components/ui/badge';
+    41→import { Progress } from '@/components/ui/progress';
+    42→import { ScrollArea } from '@/components/ui/scroll-area';
+    43→import { Separator } from '@/components/ui/separator';
+    44→import { Checkbox } from '@/components/ui/checkbox';
+    45→import {
+    46→  Dialog,
+    47→  DialogContent,
+    48→  DialogHeader,
+    49→  DialogTitle,
+    50→  DialogFooter,
+    51→} from '@/components/ui/dialog';
+    52→
+    53→/* ------------------------------------------------------------------ */
+    54→/*  Constants                                                          */
+    55→/* ------------------------------------------------------------------ */
+    56→
+    57→const COLOR_PRESETS = [
+    58→  '#10b981',
+    59→  '#3b82f6',
+    60→  '#f59e0b',
+    61→  '#ef4444',
+    62→  '#8b5cf6',
+    63→  '#ec4899',
+    64→  '#06b6d4',
+    65→  '#f97316',
+    66→];
+    67→
+    68→const PROJECT_STATUS_LABELS: Record<string, string> = {
+    69→  active: 'فعال',
+    70→  completed: 'تمام شده',
+    71→  paused: 'متوقف',
+    72→};
+    73→
+    74→const PROJECT_STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    75→  active: 'default',
+    76→  completed: 'secondary',
+    77→  paused: 'destructive',
+    78→};
+    79→
+    80→const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+    81→  { value: 'low', label: 'کم' },
+    82→  { value: 'medium', label: 'متوسط' },
+    83→  { value: 'high', label: 'زیاد' },
+    84→  { value: 'urgent', label: 'فوری' },
+    85→];
+    86→
+    87→const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
+    88→  { value: 'todo', label: 'انجام نشده' },
+    89→  { value: 'in-progress', label: 'در حال انجام' },
+    90→  { value: 'done', label: 'انجام شده' },
+    91→];
+    92→
+    93→/* ------------------------------------------------------------------ */
+    94→/*  Container animation variants                                       */
+    95→/* ------------------------------------------------------------------ */
+    96→
+    97→const containerVariants: Variants = {
+    98→  hidden: { opacity: 0 },
+    99→  visible: {
+   100→    opacity: 1,
+   101→    transition: { staggerChildren: 0.06 },
+   102→  },
+   103→};
+   104→
+   105→const itemVariants: Variants = {
+   106→  hidden: { opacity: 0, y: 20, scale: 0.97 },
+   107→  visible: {
+   108→    opacity: 1,
+   109→    y: 0,
+   110→    scale: 1,
+   111→    transition: { type: 'spring', stiffness: 300, damping: 24 },
+   112→  },
+   113→};
+   114→
+   115→/* ------------------------------------------------------------------ */
+   116→/*  Helpers                                                            */
+   117→/* ------------------------------------------------------------------ */
+   118→
+   119→function toPersianDigits(num: number): string {
+   120→  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+   121→  return num
+   122→    .toString()
+   123→    .split('')
+   124→    .map((ch) => (/\d/.test(ch) ? persianDigits[Number(ch)] : ch))
+   125→    .join('');
+   126→}
+   127→
+   128→/* ------------------------------------------------------------------ */
+   129→/*  Project Card                                                       */
+   130→/* ------------------------------------------------------------------ */
+   131→
+   132→function ProjectCard({
+   133→  project,
+   134→  taskCount,
+   135→  completedCount,
+   136→  progress,
+   137→  onClick,
+   138→}: {
+   139→  project: Project;
+   140→  taskCount: number;
+   141→  completedCount: number;
+   142→  progress: number;
+   143→  onClick: () => void;
+   144→}) {
+   145→  const statusLabel = PROJECT_STATUS_LABELS[project.status] || project.status;
+   146→  const statusVariant = PROJECT_STATUS_VARIANTS[project.status] || 'outline';
+   147→  const firstLetter = project.title.charAt(0);
+   148→
+   149→  return (
+   150→    <motion.div variants={itemVariants} className="h-full">
+   151→      <Card
+   152→        className="group relative h-full cursor-pointer overflow-hidden py-0 transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+   153→        onClick={onClick}
+   154→      >
+   155→        {/* Color accent bar */}
+   156→        <div
+   157→          className="h-1.5 w-full"
+   158→          style={{ backgroundColor: project.color }}
+   159→        />
+   160→
+   161→        <CardHeader className="pb-2">
+   162→          <div className="flex items-start justify-between">
+   163→            <div className="flex items-center gap-3">
+   164→              {project.icon ? (
+   165→                <div
+   166→                  className="flex h-10 w-10 items-center justify-center rounded-lg text-lg"
+   167→                  style={{ backgroundColor: project.color + '20', color: project.color }}
+   168→                >
+   169→                  {project.icon}
+   170→                </div>
+   171→              ) : (
+   172→                <div
+   173→                  className="flex h-10 w-10 items-center justify-center rounded-lg text-sm font-bold"
+   174→                  style={{
+   175→                    backgroundColor: project.color + '20',
+   176→                    color: project.color,
+   177→                  }}
+   178→                >
+   179→                  {firstLetter}
+   180→                </div>
+   181→              )}
+   182→              <div className="min-w-0">
+   183→                <CardTitle className="truncate text-base">{project.title}</CardTitle>
+   184→                {project.description && (
+   185→                  <CardDescription className="line-clamp-2 mt-1 text-xs leading-relaxed">
+   186→                    {project.description}
+   187→                  </CardDescription>
+   188→                )}
+   189→              </div>
+   190→            </div>
+   191→            <Badge variant={statusVariant} className="shrink-0 text-[10px]">
+   192→              {statusLabel}
+   193→            </Badge>
+   194→          </div>
+   195→        </CardHeader>
+   196→
+   197→        <CardContent className="space-y-3">
+   198→          {/* Progress */}
+   199→          <div className="space-y-1.5">
+   200→            <div className="flex items-center justify-between text-xs text-muted-foreground">
+   201→              <span>پیشرفت</span>
+   202→              <span>{toPersianDigits(Math.round(progress))}٪</span>
+   203→            </div>
+   204→            <div className="relative h-2 w-full overflow-hidden rounded-full bg-secondary">
+   205→              <motion.div
+   206→                className="absolute inset-y-0 right-0 rounded-full"
+   207→                style={{ backgroundColor: project.color }}
+   208→                initial={{ width: 0 }}
+   209→                animate={{ width: `${progress}%` }}
+   210→                transition={{ duration: 0.8, ease: 'easeOut' }}
+   211→              />
+   212→            </div>
+   213→          </div>
+   214→
+   215→          {/* Task count */}
+   216→          <div className="flex items-center justify-between text-xs text-muted-foreground">
+   217→            <span className="flex items-center gap-1">
+   218→              <CheckCircle2 className="h-3.5 w-3.5" />
+   219→              {toPersianDigits(completedCount)} از {toPersianDigits(taskCount)} وظیفه
+   220→            </span>
+   221→            {project.endDate && (
+   222→              <span className="flex items-center gap-1">
+   223→                <Clock className="h-3.5 w-3.5" />
+   224→                {formatJalaaliDateShort(new Date(project.endDate))}
+   225→              </span>
+   226→            )}
+   227→          </div>
+   228→        </CardContent>
+   229→      </Card>
+   230→    </motion.div>
+   231→  );
+   232→}
+   233→
+   234→/* ------------------------------------------------------------------ */
+   235→/*  Project Detail View                                                */
+   236→/* ------------------------------------------------------------------ */
+   237→
+   238→function ProjectDetailView({
+   239→  project,
+   240→  projectTasks,
+   241→  onBack,
+   242→}: {
+   243→  project: Project;
+   244→  projectTasks: Task[];
+   245→  onBack: () => void;
+   246→}) {
+   247→  const queryClient = useQueryClient();
+   248→
+   249→  const [showAddTaskDialog, setShowAddTaskDialog] = useState(false);
+   250→  const [newTask, setNewTask] = useState({
+   251→    title: '',
+   252→    description: '',
+   253→    priority: 'medium' as TaskPriority,
+   254→    status: 'todo' as TaskStatus,
+   255→    dueDate: '',
+   256→  });
+   257→
+   258→  const completedCount = projectTasks.filter((t) => t.status === 'done').length;
+   259→  const totalCount = projectTasks.length;
+   260→  const progress = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
+   261→
+   262→  const createTaskMutation = useMutation({
+   263→    mutationFn: async (data: Record<string, unknown>) => {
+   264→      const res = await fetch('/api/tasks', {
+   265→        method: 'POST',
+   266→        headers: { 'Content-Type': 'application/json' },
+   267→        body: JSON.stringify(data),
+   268→      });
+   269→      if (!res.ok) throw new Error('خطا در ایجاد وظیفه');
+   270→      return res.json();
+   271→    },
+   272→    onSuccess: () => {
+   273→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   274→      queryClient.invalidateQueries({ queryKey: ['projects'] });
+   275→      setShowAddTaskDialog(false);
+   276→      setNewTask({ title: '', description: '', priority: 'medium', status: 'todo', dueDate: '' });
+   277→    },
+   278→  });
+   279→
+   280→  const toggleDoneMutation = useMutation({
+   281→    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+   282→      const res = await fetch('/api/tasks', {
+   283→        method: 'PUT',
+   284→        headers: { 'Content-Type': 'application/json' },
+   285→        body: JSON.stringify({ id, status }),
+   286→      });
+   287→      return res.json();
+   288→    },
+   289→    onSuccess: () => {
+   290→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   291→      queryClient.invalidateQueries({ queryKey: ['projects'] });
+   292→    },
+   293→  });
+   294→
+   295→  const handleAddTask = (e: React.FormEvent) => {
+   296→    e.preventDefault();
+   297→    if (!newTask.title.trim()) return;
+   298→    createTaskMutation.mutate({
+   299→      title: newTask.title.trim(),
+   300→      description: newTask.description.trim() || null,
+   301→      priority: newTask.priority,
+   302→      status: newTask.status,
+   303→      dueDate: newTask.dueDate || null,
+   304→      projectId: project.id,
+   305→    });
+   306→  };
+   307→
+   308→  const handleToggleDone = (task: Task) => {
+   309→    const newStatus = task.status === 'done' ? 'todo' : 'done';
+   310→    toggleDoneMutation.mutate({ id: task.id, status: newStatus });
+   311→  };
+   312→
+   313→  return (
+   314→    <motion.div
+   315→      initial={{ opacity: 0, x: 20 }}
+   316→      animate={{ opacity: 1, x: 0 }}
+   317→      exit={{ opacity: 0, x: -20 }}
+   318→      transition={{ duration: 0.3 }}
+   319→      className="space-y-6"
+   320→    >
+   321→      {/* Back button & header */}
+   322→      <div className="flex items-center gap-3">
+   323→        <Button
+   324→          variant="ghost"
+   325→          size="sm"
+   326→          onClick={onBack}
+   327→          className="gap-1.5 text-sm"
+   328→        >
+   329→          <ArrowRight className="h-4 w-4" />
+   330→          بازگشت
+   331→        </Button>
+   332→      </div>
+   333→
+   334→      {/* Project info */}
+   335→      <Card className="py-0 overflow-hidden">
+   336→        <div className="h-1.5 w-full" style={{ backgroundColor: project.color }} />
+   337→        <CardHeader>
+   338→          <div className="flex items-start gap-4">
+   339→            {project.icon ? (
+   340→              <div
+   341→                className="flex h-14 w-14 items-center justify-center rounded-xl text-2xl"
+   342→                style={{ backgroundColor: project.color + '20', color: project.color }}
+   343→              >
+   344→                {project.icon}
+   345→              </div>
+   346→            ) : (
+   347→              <div
+   348→                className="flex h-14 w-14 items-center justify-center rounded-xl text-xl font-bold"
+   349→                style={{
+   350→                  backgroundColor: project.color + '20',
+   351→                  color: project.color,
+   352→                }}
+   353→              >
+   354→                {project.title.charAt(0)}
+   355→              </div>
+   356→            )}
+   357→            <div className="flex-1 space-y-1">
+   358→              <CardTitle className="text-xl">{project.title}</CardTitle>
+   359→              {project.description && (
+   360→                <CardDescription className="text-sm">
+   361→                  {project.description}
+   362→                </CardDescription>
+   363→              )}
+   364→            </div>
+   365→            <Badge variant={PROJECT_STATUS_VARIANTS[project.status] || 'outline'}>
+   366→              {PROJECT_STATUS_LABELS[project.status] || project.status}
+   367→            </Badge>
+   368→          </div>
+   369→        </CardHeader>
+   370→
+   371→        <CardContent className="space-y-4">
+   372→          {/* Progress bar */}
+   373→          <div className="space-y-2">
+   374→            <div className="flex items-center justify-between text-sm">
+   375→              <span className="text-muted-foreground">پیشرفت پروژه</span>
+   376→              <span className="font-medium">
+   377→                {toPersianDigits(completedCount)} از {toPersianDigits(totalCount)} وظیفه — {toPersianDigits(Math.round(progress))}٪
+   378→              </span>
+   379→            </div>
+   380→            <Progress value={progress} className="h-2.5" />
+   381→          </div>
+   382→
+   383→          <Separator />
+   384→
+   385→          {/* Add task button */}
+   386→          <div className="flex items-center justify-between">
+   387→            <h3 className="text-sm font-semibold">وظایف پروژه</h3>
+   388→            <Button
+   389→              size="sm"
+   390→              onClick={() => setShowAddTaskDialog(true)}
+   391→              className="gap-1.5"
+   392→            >
+   393→              <Plus className="h-4 w-4" />
+   394→              افزودن وظیفه
+   395→            </Button>
+   396→          </div>
+   397→
+   398→          {/* Task list */}
+   399→          {projectTasks.length === 0 ? (
+   400→            <div className="flex flex-col items-center justify-center py-12 text-center">
+   401→              <CheckCircle2 className="h-10 w-10 text-muted-foreground/40" />
+   402→              <p className="mt-3 text-sm text-muted-foreground">
+   403→                هنوز وظیفه‌ای برای این پروژه تعریف نشده است
+   404→              </p>
+   405→              <Button
+   406→                variant="outline"
+   407→                size="sm"
+   408→                className="mt-3 gap-1.5"
+   409→                onClick={() => setShowAddTaskDialog(true)}
+   410→              >
+   411→                <Plus className="h-3.5 w-3.5" />
+   412→                اولین وظیفه را اضافه کنید
+   413→              </Button>
+   414→            </div>
+   415→          ) : (
+   416→            <ScrollArea className="max-h-[400px]">
+   417→              <div className="space-y-2">
+   418→                {projectTasks.map((task) => {
+   419→                  const isDone = task.status === 'done';
+   420→                  return (
+   421→                    <motion.div
+   422→                      key={task.id}
+   423→                      initial={{ opacity: 0, y: 8 }}
+   424→                      animate={{ opacity: 1, y: 0 }}
+   425→                      className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/50"
+   426→                    >
+   427→                      <Checkbox
+   428→                        checked={isDone}
+   429→                        onCheckedChange={() => handleToggleDone(task)}
+   430→                        className="mt-0.5"
+   431→                      />
+   432→                      <div className="min-w-0 flex-1">
+   433→                        <p
+   434→                          className={cn(
+   435→                            'text-sm font-medium leading-relaxed',
+   436→                            isDone && 'text-muted-foreground line-through'
+   437→                          )}
+   438→                        >
+   439→                          {task.title}
+   440→                        </p>
+   441→                        {task.description && (
+   442→                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+   443→                            {task.description}
+   444→                          </p>
+   445→                        )}
+   446→                        <div className="mt-1.5 flex flex-wrap items-center gap-2">
+   447→                          <Badge
+   448→                            variant="outline"
+   449→                            className="gap-1 text-[10px]"
+   450→                          >
+   451→                            <span
+   452→                              className="inline-block h-2 w-2 rounded-full"
+   453→                              style={{ backgroundColor: PRIORITY_COLORS[task.priority] }}
+   454→                            />
+   455→                            {PRIORITY_LABELS[task.priority]}
+   456→                          </Badge>
+   457→                          <Badge variant="outline" className="text-[10px]">
+   458→                            {STATUS_LABELS[task.status]}
+   459→                          </Badge>
+   460→                          {task.dueDate && (
+   461→                            <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
+   462→                              <Calendar className="h-3 w-3" />
+   463→                              {formatJalaaliDateShort(new Date(task.dueDate))}
+   464→                            </span>
+   465→                          )}
+   466→                        </div>
+   467→                      </div>
+   468→                    </motion.div>
+   469→                  );
+   470→                })}
+   471→              </div>
+   472→            </ScrollArea>
+   473→          )}
+   474→        </CardContent>
+   475→      </Card>
+   476→
+   477→      {/* Add task dialog */}
+   478→      <Dialog open={showAddTaskDialog} onOpenChange={setShowAddTaskDialog}>
+   479→        <DialogContent className="sm:max-w-md">
+   480→          <DialogHeader>
+   481→            <DialogTitle>افزودن وظیفه جدید</DialogTitle>
+   482→          </DialogHeader>
+   483→          <form onSubmit={handleAddTask} className="space-y-4">
+   484→            <div className="space-y-2">
+   485→              <label className="text-sm font-medium">عنوان وظیفه *</label>
+   486→              <Input
+   487→                value={newTask.title}
+   488→                onChange={(e) => setNewTask((p) => ({ ...p, title: e.target.value }))}
+   489→                placeholder="عنوان وظیفه را وارد کنید"
+   490→                autoFocus
+   491→              />
+   492→            </div>
+   493→            <div className="space-y-2">
+   494→              <label className="text-sm font-medium">توضیحات</label>
+   495→              <Textarea
+   496→                value={newTask.description}
+   497→                onChange={(e) => setNewTask((p) => ({ ...p, description: e.target.value }))}
+   498→                placeholder="توضیحات اختیاری"
+   499→                rows={3}
+   500→              />
+   501→            </div>
+   502→            <div className="grid grid-cols-2 gap-3">
+   503→              <div className="space-y-2">
+   504→                <label className="text-sm font-medium">اولویت</label>
+   505→                <div className="flex flex-wrap gap-1.5">
+   506→                  {PRIORITY_OPTIONS.map((opt) => (
+   507→                    <button
+   508→                      key={opt.value}
+   509→                      type="button"
+   510→                      onClick={() => setNewTask((p) => ({ ...p, priority: opt.value }))}
+   511→                      className={cn(
+   512→                        'rounded-md border px-2.5 py-1 text-xs transition-colors',
+   513→                        newTask.priority === opt.value
+   514→                          ? 'border-primary bg-primary/10 text-primary'
+   515→                          : 'border-muted text-muted-foreground hover:border-foreground/30'
+   516→                      )}
+   517→                    >
+   518→                      {opt.label}
+   519→                    </button>
+   520→                  ))}
+   521→                </div>
+   522→              </div>
+   523→              <div className="space-y-2">
+   524→                <label className="text-sm font-medium">وضعیت</label>
+   525→                <div className="flex flex-wrap gap-1.5">
+   526→                  {STATUS_OPTIONS.map((opt) => (
+   527→                    <button
+   528→                      key={opt.value}
+   529→                      type="button"
+   530→                      onClick={() => setNewTask((p) => ({ ...p, status: opt.value }))}
+   531→                      className={cn(
+   532→                        'rounded-md border px-2.5 py-1 text-xs transition-colors',
+   533→                        newTask.status === opt.value
+   534→                          ? 'border-primary bg-primary/10 text-primary'
+   535→                          : 'border-muted text-muted-foreground hover:border-foreground/30'
+   536→                      )}
+   537→                    >
+   538→                      {opt.label}
+   539→                    </button>
+   540→                  ))}
+   541→                </div>
+   542→              </div>
+   543→            </div>
+   544→            <div className="space-y-2">
+   545→              <label className="text-sm font-medium">تاریخ سررسید</label>
+   546→              <Input
+   547→                type="date"
+   548→                value={newTask.dueDate}
+   549→                onChange={(e) => setNewTask((p) => ({ ...p, dueDate: e.target.value }))}
+   550→              />
+   551→            </div>
+   552→            <DialogFooter className="gap-2 pt-2">
+   553→              <Button
+   554→                type="button"
+   555→                variant="outline"
+   556→                onClick={() => setShowAddTaskDialog(false)}
+   557→              >
+   558→                انصراف
+   559→              </Button>
+   560→              <Button
+   561→                type="submit"
+   562→                disabled={!newTask.title.trim() || createTaskMutation.isPending}
+   563→              >
+   564→                {createTaskMutation.isPending ? 'در حال ایجاد...' : 'ایجاد وظیفه'}
+   565→              </Button>
+   566→            </DialogFooter>
+   567→          </form>
+   568→        </DialogContent>
+   569→      </Dialog>
+   570→    </motion.div>
+   571→  );
+   572→}
+   573→
+   574→/* ------------------------------------------------------------------ */
+   575→/*  Main Projects Page                                                 */
+   576→/* ------------------------------------------------------------------ */
+   577→
+   578→export default function ProjectsPage() {
+   579→  const {
+   580→    projects,
+   581→    tasks,
+   582→    setSelectedProjectId,
+   583→    selectedProjectId,
+   584→  } = useAppStore();
+   585→
+   586→  const queryClient = useQueryClient();
+   587→
+   588→  const [showAddDialog, setShowAddDialog] = useState(false);
+   589→  const [newProject, setNewProject] = useState({
+   590→    title: '',
+   591→    description: '',
+   592→    color: COLOR_PRESETS[0],
+   593→    icon: '',
+   594→  });
+   595→
+   596→  /* ---------- computed ---------- */
+   597→
+   598→  const selectedProject = useMemo(
+   599→    () => projects.find((p) => p.id === selectedProjectId) || null,
+   600→    [projects, selectedProjectId]
+   601→  );
+   602→
+   603→  const projectTaskStats = useMemo(() => {
+   604→    const stats: Record<
+   605→      string,
+   606→      { total: number; completed: number; progress: number }
+   607→    > = {};
+   608→    for (const p of projects) {
+   609→      const projectTasks = tasks.filter((t) => t.projectId === p.id);
+   610→      const total = projectTasks.length;
+   611→      const completed = projectTasks.filter((t) => t.status === 'done').length;
+   612→      const progress = total > 0 ? (completed / total) * 100 : 0;
+   613→      stats[p.id] = { total, completed, progress };
+   614→    }
+   615→    return stats;
+   616→  }, [projects, tasks]);
+   617→
+   618→  const selectedProjectTasks = useMemo(
+   619→    () => (selectedProjectId ? tasks.filter((t) => t.projectId === selectedProjectId) : []),
+   620→    [tasks, selectedProjectId]
+   621→  );
+   622→
+   623→  /* ---------- mutations ---------- */
+   624→
+   625→  const createProjectMutation = useMutation({
+   626→    mutationFn: async (data: Record<string, unknown>) => {
+   627→      const res = await fetch('/api/projects', {
+   628→        method: 'POST',
+   629→        headers: { 'Content-Type': 'application/json' },
+   630→        body: JSON.stringify(data),
+   631→      });
+   632→      if (!res.ok) throw new Error('خطا در ایجاد پروژه');
+   633→      return res.json();
+   634→    },
+   635→    onSuccess: () => {
+   636→      queryClient.invalidateQueries({ queryKey: ['projects'] });
+   637→      setShowAddDialog(false);
+   638→      setNewProject({ title: '', description: '', color: COLOR_PRESETS[0], icon: '' });
+   639→    },
+   640→  });
+   641→
+   642→  const handleSubmit = (e: React.FormEvent) => {
+   643→    e.preventDefault();
+   644→    if (!newProject.title.trim()) return;
+   645→    createProjectMutation.mutate({
+   646→      title: newProject.title.trim(),
+   647→      description: newProject.description.trim() || null,
+   648→      color: newProject.color,
+   649→      icon: newProject.icon.trim() || null,
+   650→    });
+   651→  };
+   652→
+   653→  /* ---------- handlers ---------- */
+   654→
+   655→  const handleProjectClick = useCallback(
+   656→    (projectId: string) => {
+   657→      setSelectedProjectId(projectId);
+   658→    },
+   659→    [setSelectedProjectId]
+   660→  );
+   661→
+   662→  const handleBack = useCallback(() => {
+   663→    setSelectedProjectId(null);
+   664→  }, [setSelectedProjectId]);
+   665→
+   666→  /* ---------- render ---------- */
+   667→
+   668→  // If a project is selected, show detail view
+   669→  if (selectedProjectId && selectedProject) {
+   670→    return (
+   671→      <div className="mx-auto w-full max-w-4xl px-4 py-6 sm:px-6">
+   672→        <ProjectDetailView
+   673→          project={selectedProject}
+   674→          projectTasks={selectedProjectTasks}
+   675→          onBack={handleBack}
+   676→        />
+   677→      </div>
+   678→    );
+   679→  }
+   680→
+   681→  return (
+   682→    <motion.div
+   683→      initial={{ opacity: 0, y: 12 }}
+   684→      animate={{ opacity: 1, y: 0 }}
+   685→      transition={{ duration: 0.35, ease: 'easeOut' }}
+   686→      className="mx-auto w-full max-w-6xl px-4 py-6 sm:px-6 space-y-8"
+   687→    >
+   688→      {/* Header */}
+   689→      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+   690→        <div>
+   691→          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+   692→            پروژه‌ها
+   693→          </h1>
+   694→          <p className="mt-1 text-sm text-muted-foreground">
+   695→            مدیریت و پیگیری پروژه‌های خود
+   696→          </p>
+   697→        </div>
+   698→        <Button
+   699→          onClick={() => setShowAddDialog(true)}
+   700→          className="gap-2 self-start"
+   701→        >
+   702→          <Plus className="h-4 w-4" />
+   703→          پروژه جدید
+   704→        </Button>
+   705→      </div>
+   706→
+   707→      {/* Projects Grid */}
+   708→      {projects.length === 0 ? (
+   709→        <motion.div
+   710→          initial={{ opacity: 0, scale: 0.95 }}
+   711→          animate={{ opacity: 1, scale: 1 }}
+   712→          className="flex flex-col items-center justify-center rounded-xl border border-dashed py-20 text-center"
+   713→        >
+   714→          <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted">
+   715→            <FolderKanban className="h-8 w-8 text-muted-foreground" />
+   716→          </div>
+   717→          <h3 className="mt-4 text-lg font-semibold">هنوز پروژه‌ای ندارید</h3>
+   718→          <p className="mt-1 max-w-sm text-sm text-muted-foreground">
+   719→            برای شروع، اولین پروژه خود را ایجاد کنید و وظایف آن را مدیریت کنید.
+   720→          </p>
+   721→          <Button
+   722→            variant="outline"
+   723→            className="mt-4 gap-2"
+   724→            onClick={() => setShowAddDialog(true)}
+   725→          >
+   726→            <Plus className="h-4 w-4" />
+   727→            ایجاد پروژه اول
+   728→          </Button>
+   729→        </motion.div>
+   730→      ) : (
+   731→        <motion.div
+   732→          variants={containerVariants}
+   733→          initial="hidden"
+   734→          animate="visible"
+   735→          className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+   736→        >
+   737→          <AnimatePresence>
+   738→            {projects.map((project) => {
+   739→              const stats = projectTaskStats[project.id] || {
+   740→                total: 0,
+   741→                completed: 0,
+   742→                progress: 0,
+   743→              };
+   744→              return (
+   745→                <ProjectCard
+   746→                  key={project.id}
+   747→                  project={project}
+   748→                  taskCount={stats.total}
+   749→                  completedCount={stats.completed}
+   750→                  progress={stats.progress}
+   751→                  onClick={() => handleProjectClick(project.id)}
+   752→                />
+   753→              );
+   754→            })}
+   755→          </AnimatePresence>
+   756→        </motion.div>
+   757→      )}
+   758→
+   759→      {/* Add Project Dialog */}
+   760→      <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+   761→        <DialogContent className="sm:max-w-md">
+   762→          <DialogHeader>
+   763→            <DialogTitle>پروژه جدید</DialogTitle>
+   764→          </DialogHeader>
+   765→          <form onSubmit={handleSubmit} className="space-y-4">
+   766→            <div className="space-y-2">
+   767→              <label className="text-sm font-medium">نام پروژه *</label>
+   768→              <Input
+   769→                value={newProject.title}
+   770→                onChange={(e) =>
+   771→                  setNewProject((p) => ({ ...p, title: e.target.value }))
+   772→                }
+   773→                placeholder="مثلاً: بازطراحی وبسایت"
+   774→                autoFocus
+   775→              />
+   776→            </div>
+   777→            <div className="space-y-2">
+   778→              <label className="text-sm font-medium">توضیحات</label>
+   779→              <Textarea
+   780→                value={newProject.description}
+   781→                onChange={(e) =>
+   782→                  setNewProject((p) => ({ ...p, description: e.target.value }))
+   783→                }
+   784→                placeholder="توضیحات اختیاری درباره پروژه"
+   785→                rows={3}
+   786→              />
+   787→            </div>
+   788→            <div className="space-y-2">
+   789→              <label className="text-sm font-medium">آیکون (اختیاری)</label>
+   790→              <Input
+   791→                value={newProject.icon}
+   792→                onChange={(e) =>
+   793→                  setNewProject((p) => ({ ...p, icon: e.target.value }))
+   794→                }
+   795→                placeholder="یک ایموجی وارد کنید مثلاً 🚀"
+   796→                className="text-lg"
+   797→              />
+   798→            </div>
+   799→            <div className="space-y-2">
+   800→              <label className="text-sm font-medium">رنگ</label>
+   801→              <div className="flex flex-wrap gap-2.5">
+   802→                {COLOR_PRESETS.map((color) => (
+   803→                  <button
+   804→                    key={color}
+   805→                    type="button"
+   806→                    onClick={() =>
+   807→                      setNewProject((p) => ({ ...p, color }))
+   808→                    }
+   809→                    className={cn(
+   810→                      'h-8 w-8 rounded-full transition-all duration-200',
+   811→                      newProject.color === color
+   812→                        ? 'ring-2 ring-offset-2 ring-offset-background scale-110'
+   813→                        : 'hover:scale-110'
+   814→                    )}
+   815→                    style={{
+   816→                      backgroundColor: color,
+   817→                      ...(newProject.color === color ? { ringColor: color } : {}),
+   818→                    }}
+   819→                  />
+   820→                ))}
+   821→              </div>
+   822→            </div>
+   823→            <DialogFooter className="gap-2 pt-2">
+   824→              <Button
+   825→                type="button"
+   826→                variant="outline"
+   827→                onClick={() => setShowAddDialog(false)}
+   828→              >
+   829→                انصراف
+   830→              </Button>
+   831→              <Button
+   832→                type="submit"
+   833→                disabled={!newProject.title.trim() || createProjectMutation.isPending}
+   834→              >
+   835→                {createProjectMutation.isPending ? 'در حال ایجاد...' : 'ایجاد پروژه'}
+   836→              </Button>
+   837→            </DialogFooter>
+   838→          </form>
+   839→        </DialogContent>
+   840→      </Dialog>
+   841→    </motion.div>
+   842→  );
+   843→}

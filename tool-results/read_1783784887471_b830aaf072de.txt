@@ -1,0 +1,748 @@
+     1→'use client';
+     2→
+     3→import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Play,
+     7→  Pause,
+     8→  RotateCcw,
+     9→  SkipForward,
+    10→  Settings2,
+    11→  Clock,
+    12→  CheckCircle2,
+    13→  Coffee,
+    14→  Sofa,
+    15→  Target,
+    16→} from 'lucide-react';
+    17→import { useMutation, useQueryClient } from '@tanstack/react-query';
+    18→import { toast } from 'sonner';
+    19→
+    20→import { useAppStore } from '@/lib/store';
+    21→import { cn } from '@/lib/utils';
+    22→import { toJalaali, formatJalaaliDateShort } from '@/lib/jalali';
+    23→import type { FocusType, Task } from '@/types';
+    24→
+    25→import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+    26→import { Button } from '@/components/ui/button';
+    27→import {
+    28→  Select,
+    29→  SelectTrigger,
+    30→  SelectValue,
+    31→  SelectContent,
+    32→  SelectItem,
+    33→} from '@/components/ui/select';
+    34→import { Badge } from '@/components/ui/badge';
+    35→import { Separator } from '@/components/ui/separator';
+    36→import { Label } from '@/components/ui/label';
+    37→import { Slider } from '@/components/ui/slider';
+    38→
+    39→/* ------------------------------------------------------------------ */
+    40→/*  Constants                                                          */
+    41→/* ------------------------------------------------------------------ */
+    42→
+    43→const MODE_LABELS: Record<FocusType, string> = {
+    44→  pomodoro: 'حالت تمرکز',
+    45→  'short-break': 'استراحت کوتاه',
+    46→  'long-break': 'استراحت بلند',
+    47→};
+    48→
+    49→const MODE_BUTTONS: { value: FocusType; label: string }[] = [
+    50→  { value: 'pomodoro', label: 'تمرکز' },
+    51→  { value: 'short-break', label: 'استراحت کوتاه' },
+    52→  { value: 'long-break', label: 'استراحت بلند' },
+    53→];
+    54→
+    55→const MODE_COLORS: Record<FocusType, { ring: string; bg: string; text: string; stroke: string }> = {
+    56→  pomodoro: {
+    57→    ring: 'from-emerald-400 via-green-500 to-teal-500',
+    58→    bg: 'bg-emerald-500/10',
+    59→    text: 'text-emerald-500',
+    60→    stroke: '#10b981',
+    61→  },
+    62→  'short-break': {
+    63→    ring: 'from-blue-400 via-sky-500 to-cyan-500',
+    64→    bg: 'bg-blue-500/10',
+    65→    text: 'text-blue-500',
+    66→    stroke: '#3b82f6',
+    67→  },
+    68→  'long-break': {
+    69→    ring: 'from-purple-400 via-violet-500 to-fuchsia-500',
+    70→    bg: 'bg-purple-500/10',
+    71→    text: 'text-purple-500',
+    72→    stroke: '#8b5cf6',
+    73→  },
+    74→};
+    75→
+    76→const CIRCLE_RADIUS = 140;
+    77→const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS;
+    78→
+    79→/* ------------------------------------------------------------------ */
+    80→/*  Helpers                                                            */
+    81→/* ------------------------------------------------------------------ */
+    82→
+    83→function toPersianDigits(val: string | number): string {
+    84→  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    85→  return String(val).replace(/\d/g, (d) => persianDigits[parseInt(d)]);
+    86→}
+    87→
+    88→function formatTime(seconds: number): string {
+    89→  const mins = Math.floor(seconds / 60);
+    90→  const secs = seconds % 60;
+    91→  return `${toPersianDigits(String(mins).padStart(2, '0'))}:${toPersianDigits(String(secs).padStart(2, '0'))}`;
+    92→}
+    93→
+    94→function getTodayStr(): string {
+    95→  const d = new Date();
+    96→  const y = d.getFullYear();
+    97→  const m = String(d.getMonth() + 1).padStart(2, '0');
+    98→  const day = String(d.getDate()).padStart(2, '0');
+    99→  return `${y}-${m}-${day}`;
+   100→}
+   101→
+   102→function getDurationForMode(
+   103→  mode: FocusType,
+   104→  settings: { pomodoroDuration: number; shortBreakDuration: number; longBreakDuration: number }
+   105→): number {
+   106→  switch (mode) {
+   107→    case 'pomodoro':
+   108→      return settings.pomodoroDuration * 60;
+   109→    case 'short-break':
+   110→      return settings.shortBreakDuration * 60;
+   111→    case 'long-break':
+   112→      return settings.longBreakDuration * 60;
+   113→  }
+   114→}
+   115→
+   116→function formatFocusTime(totalMinutes: number): string {
+   117→  if (totalMinutes < 60) {
+   118→    return `${toPersianDigits(totalMinutes)} دقیقه`;
+   119→  }
+   120→  const hours = Math.floor(totalMinutes / 60);
+   121→  const mins = totalMinutes % 60;
+   122→  if (mins === 0) return `${toPersianDigits(hours)} ساعت`;
+   123→  return `${toPersianDigits(hours)} ساعت و ${toPersianDigits(mins)} دقیقه`;
+   124→}
+   125→
+   126→/* ------------------------------------------------------------------ */
+   127→/*  Animation variants                                                 */
+   128→/* ------------------------------------------------------------------ */
+   129→
+   130→const containerVariants = {
+   131→  hidden: {},
+   132→  visible: {
+   133→    transition: { staggerChildren: 0.08 },
+   134→  },
+   135→} as const;
+   136→
+   137→const itemVariants = {
+   138→  hidden: { opacity: 0, y: 20 },
+   139→  visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: 'easeOut' as const } },
+   140→};
+   141→
+   142→/* ------------------------------------------------------------------ */
+   143→/*  Component                                                          */
+   144→/* ------------------------------------------------------------------ */
+   145→
+   146→export default function FocusPage() {
+   147→  const { tasks, focusSessions, settings, setSettings } = useAppStore();
+   148→  const queryClient = useQueryClient();
+   149→
+   150→  /* ---- local state ---- */
+   151→  const [mode, setMode] = useState<FocusType>('pomodoro');
+   152→  const [timeLeft, setTimeLeft] = useState(getDurationForMode('pomodoro', settings));
+   153→  const [isRunning, setIsRunning] = useState(false);
+   154→  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+   155→  const [sessionCount, setSessionCount] = useState(0);
+   156→  const [showSettings, setShowSettings] = useState(false);
+   157→
+   158→  const originalDuration = useMemo(
+   159→    () => getDurationForMode(mode, settings),
+   160→    [mode, settings]
+   161→  );
+   162→
+   163→  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+   164→
+   165→  /* ---- eligible tasks ---- */
+   166→  const eligibleTasks = useMemo(
+   167→    () => tasks.filter((t: Task) => t.status === 'todo' || t.status === 'in-progress'),
+   168→    [tasks]
+   169→  );
+   170→
+   171→  const selectedTask = useMemo(
+   172→    () => tasks.find((t: Task) => t.id === selectedTaskId) ?? null,
+   173→    [tasks, selectedTaskId]
+   174→  );
+   175→
+   176→  /* ---- today's sessions ---- */
+   177→  const todayStr = getTodayStr();
+   178→  const todaySessions = useMemo(
+   179→    () =>
+   180→      focusSessions.filter((s) => s.completedAt && s.completedAt.startsWith(todayStr)),
+   181→    [focusSessions, todayStr]
+   182→  );
+   183→
+   184→  const todayTotalFocusMinutes = useMemo(
+   185→    () =>
+   186→      todaySessions
+   187→        .filter((s) => s.type === 'pomodoro')
+   188→        .reduce((acc, s) => acc + s.duration, 0),
+   189→    [todaySessions]
+   190→  );
+   191→
+   192→  /* ---- progress ---- */
+   193→  const progress = originalDuration > 0 ? (originalDuration - timeLeft) / originalDuration : 0;
+   194→  const dashOffset = CIRCLE_CIRCUMFERENCE * (1 - progress);
+   195→  const colors = MODE_COLORS[mode];
+   196→
+   197→  /* ---- timer logic ---- */
+   198→  const clearTimer = useCallback(() => {
+   199→    if (intervalRef.current) {
+   200→      clearInterval(intervalRef.current);
+   201→      intervalRef.current = null;
+   202→    }
+   203→  }, []);
+   204→
+   205→  const handleTimerComplete = useCallback(() => {
+   206→    clearTimer();
+   207→    setIsRunning(false);
+   208→
+   209→    /* play notification sound (Web Audio API) */
+   210→    try {
+   211→      const ctx = new AudioContext();
+   212→      const osc = ctx.createOscillator();
+   213→      const gain = ctx.createGain();
+   214→      osc.connect(gain);
+   215→      gain.connect(ctx.destination);
+   216→      osc.frequency.value = 800;
+   217→      gain.gain.value = 0.3;
+   218→      osc.start();
+   219→      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
+   220→      osc.stop(ctx.currentTime + 0.8);
+   221→    } catch {
+   222→      /* silent fallback */
+   223→    }
+   224→
+   225→    if (mode === 'pomodoro') {
+   226→      toast.success('زمان تمرکز به پایان رسید! استراحت کنید.');
+   227→      setSessionCount((prev) => prev + 1);
+   228→    } else {
+   229→      toast.success('استراحت تمام شد! آماده تمرکز بعدی هستید؟');
+   230→    }
+   231→  }, [clearTimer, mode]);
+   232→
+   233→  useEffect(() => {
+   234→    if (!isRunning) {
+   235→      clearTimer();
+   236→      return;
+   237→    }
+   238→    intervalRef.current = setInterval(() => {
+   239→      setTimeLeft((prev) => {
+   240→        if (prev <= 1) {
+   241→          handleTimerComplete();
+   242→          return 0;
+   243→        }
+   244→        return prev - 1;
+   245→      });
+   246→    }, 1000);
+   247→
+   248→    return () => clearTimer();
+   249→  }, [isRunning, clearTimer, handleTimerComplete]);
+   250→
+   251→  /* auto-switch mode on timer complete */
+   252→  useEffect(() => {
+   253→    if (isRunning || timeLeft !== 0) return;
+   254→
+   255→    if (mode === 'pomodoro') {
+   256→      const shouldLongBreak = sessionCount > 0 && sessionCount % settings.longBreakInterval === 0;
+   257→      const nextMode: FocusType = shouldLongBreak ? 'long-break' : 'short-break';
+   258→      setMode(nextMode);
+   259→      setTimeLeft(getDurationForMode(nextMode, settings));
+   260→    } else {
+   261→      setMode('pomodoro');
+   262→      setTimeLeft(getDurationForMode('pomodoro', settings));
+   263→    }
+   264→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   265→  }, [timeLeft, isRunning]);
+   266→
+   267→  /* ---- mutation: save session ---- */
+   268→  const saveSessionMutation = useMutation({
+   269→    mutationFn: async (payload: {
+   270→      type: FocusType;
+   271→      duration: number;
+   272→      taskId: string | null;
+   273→    }) => {
+   274→      const res = await fetch('/api/focus-sessions', {
+   275→        method: 'POST',
+   276→        headers: { 'Content-Type': 'application/json' },
+   277→        body: JSON.stringify({ ...payload, userId: 'default' }),
+   278→      });
+   279→      if (!res.ok) throw new Error('خطا در ذخیره‌سازی');
+   280→      return res.json();
+   281→    },
+   282→    onSuccess: () => {
+   283→      queryClient.invalidateQueries({ queryKey: ['focus-sessions'] });
+   284→    },
+   285→    onError: () => {
+   286→      toast.error('خطا در ذخیره‌سازی جلسه تمرکز');
+   287→    },
+   288→  });
+   289→
+   290→  /* when timer completes, save to API */
+   291→  useEffect(() => {
+   292→    if (timeLeft === 0 && !isRunning) {
+   293→      saveSessionMutation.mutate({
+   294→        type: mode,
+   295→        duration: originalDuration / 60,
+   296→        taskId: selectedTaskId,
+   297→      });
+   298→    }
+   299→    // eslint-disable-next-line react-hooks/exhaustive-deps
+   300→  }, [timeLeft, isRunning]);
+   301→
+   302→  /* ---- controls ---- */
+   303→  const toggleTimer = () => setIsRunning((prev) => !prev);
+   304→
+   305→  const resetTimer = () => {
+   306→    clearTimer();
+   307→    setIsRunning(false);
+   308→    setTimeLeft(getDurationForMode(mode, settings));
+   309→  };
+   310→
+   311→  const skipTimer = () => {
+   312→    clearTimer();
+   313→    setIsRunning(false);
+   314→    setTimeLeft(0);
+   315→  };
+   316→
+   317→  const switchMode = (newMode: FocusType) => {
+   318→    clearTimer();
+   319→    setIsRunning(false);
+   320→    setMode(newMode);
+   321→    setTimeLeft(getDurationForMode(newMode, settings));
+   322→  };
+   323→
+   324→  /* ---- render ---- */
+   325→  return (
+   326→    <div className="h-full overflow-y-auto pb-8" dir="rtl">
+   327→      <div className="mx-auto max-w-3xl space-y-8 px-4 pt-8">
+   328→        {/* Header */}
+   329→        <motion.div
+   330→          initial={{ opacity: 0, y: -10 }}
+   331→          animate={{ opacity: 1, y: 0 }}
+   332→          className="flex items-center justify-between"
+   333→        >
+   334→          <div>
+   335→            <h1 className="text-2xl font-bold">حالت تمرکز</h1>
+   336→            <p className="text-sm text-muted-foreground">با تکنیک پومودورو تمرکز خود را افزایش دهید</p>
+   337→          </div>
+   338→          <Button
+   339→            variant="outline"
+   340→            size="icon"
+   341→            onClick={() => setShowSettings(!showSettings)}
+   342→            className={cn(showSettings && 'bg-accent')}
+   343→          >
+   344→            <Settings2 className="h-4 w-4" />
+   345→          </Button>
+   346→        </motion.div>
+   347→
+   348→        <motion.div
+   349→          variants={containerVariants}
+   350→          initial="hidden"
+   351→          animate="visible"
+   352→          className="space-y-6"
+   353→        >
+   354→          {/* Settings Panel */}
+   355→          <AnimatePresence>
+   356→            {showSettings && (
+   357→              <motion.div
+   358→                initial={{ opacity: 0, height: 0 }}
+   359→                animate={{ opacity: 1, height: 'auto' }}
+   360→                exit={{ opacity: 0, height: 0 }}
+   361→                transition={{ duration: 0.3 }}
+   362→                className="overflow-hidden"
+   363→              >
+   364→                <Card>
+   365→                  <CardHeader className="pb-4">
+   366→                    <CardTitle className="text-base">تنظیمات تایمر</CardTitle>
+   367→                  </CardHeader>
+   368→                  <CardContent className="space-y-6">
+   369→                    {/* Pomodoro Duration */}
+   370→                    <div className="space-y-3">
+   371→                      <div className="flex items-center justify-between">
+   372→                        <Label>مدت تمرکز (دقیقه)</Label>
+   373→                        <span className="text-sm font-medium tabular-nums text-muted-foreground">
+   374→                          {toPersianDigits(settings.pomodoroDuration)}
+   375→                        </span>
+   376→                      </div>
+   377→                      <Slider
+   378→                        value={[settings.pomodoroDuration]}
+   379→                        onValueChange={([v]) => {
+   380→                          setSettings({ pomodoroDuration: v });
+   381→                          if (mode === 'pomodoro' && !isRunning) {
+   382→                            setTimeLeft(v * 60);
+   383→                          }
+   384→                        }}
+   385→                        min={1}
+   386→                        max={120}
+   387→                        step={1}
+   388→                      />
+   389→                    </div>
+   390→
+   391→                    {/* Short Break Duration */}
+   392→                    <div className="space-y-3">
+   393→                      <div className="flex items-center justify-between">
+   394→                        <Label>استراحت کوتاه (دقیقه)</Label>
+   395→                        <span className="text-sm font-medium tabular-nums text-muted-foreground">
+   396→                          {toPersianDigits(settings.shortBreakDuration)}
+   397→                        </span>
+   398→                      </div>
+   399→                      <Slider
+   400→                        value={[settings.shortBreakDuration]}
+   401→                        onValueChange={([v]) => {
+   402→                          setSettings({ shortBreakDuration: v });
+   403→                          if (mode === 'short-break' && !isRunning) {
+   404→                            setTimeLeft(v * 60);
+   405→                          }
+   406→                        }}
+   407→                        min={1}
+   408→                        max={30}
+   409→                        step={1}
+   410→                      />
+   411→                    </div>
+   412→
+   413→                    {/* Long Break Duration */}
+   414→                    <div className="space-y-3">
+   415→                      <div className="flex items-center justify-between">
+   416→                        <Label>استراحت بلند (دقیقه)</Label>
+   417→                        <span className="text-sm font-medium tabular-nums text-muted-foreground">
+   418→                          {toPersianDigits(settings.longBreakDuration)}
+   419→                        </span>
+   420→                      </div>
+   421→                      <Slider
+   422→                        value={[settings.longBreakDuration]}
+   423→                        onValueChange={([v]) => {
+   424→                          setSettings({ longBreakDuration: v });
+   425→                          if (mode === 'long-break' && !isRunning) {
+   426→                            setTimeLeft(v * 60);
+   427→                          }
+   428→                        }}
+   429→                        min={1}
+   430→                        max={60}
+   431→                        step={1}
+   432→                      />
+   433→                    </div>
+   434→
+   435→                    {/* Long Break Interval */}
+   436→                    <div className="space-y-3">
+   437→                      <div className="flex items-center justify-between">
+   438→                        <Label>فاصله استراحت بلند (هر چند پومودورو)</Label>
+   439→                        <span className="text-sm font-medium tabular-nums text-muted-foreground">
+   440→                          {toPersianDigits(settings.longBreakInterval)}
+   441→                        </span>
+   442→                      </div>
+   443→                      <Slider
+   444→                        value={[settings.longBreakInterval]}
+   445→                        onValueChange={([v]) => setSettings({ longBreakInterval: v })}
+   446→                        min={1}
+   447→                        max={10}
+   448→                        step={1}
+   449→                      />
+   450→                    </div>
+   451→                  </CardContent>
+   452→                </Card>
+   453→              </motion.div>
+   454→            )}
+   455→          </AnimatePresence>
+   456→
+   457→          {/* Task Selection */}
+   458→          {eligibleTasks.length > 0 && (
+   459→            <motion.div variants={itemVariants}>
+   460→              <div className="flex items-center gap-3">
+   461→                <Target className="h-4 w-4 shrink-0 text-muted-foreground" />
+   462→                <Select
+   463→                  value={selectedTaskId ?? '__none__'}
+   464→                  onValueChange={(v) => setSelectedTaskId(v === '__none__' ? null : v)}
+   465→                >
+   466→                  <SelectTrigger className="w-full">
+   467→                    <SelectValue placeholder="وظیفه‌ای را برای تمرکز انتخاب کنید" />
+   468→                  </SelectTrigger>
+   469→                  <SelectContent>
+   470→                    <SelectItem value="__none__">بدون وظیفه</SelectItem>
+   471→                    {eligibleTasks.map((task: Task) => (
+   472→                      <SelectItem key={task.id} value={task.id}>
+   473→                        {task.title}
+   474→                      </SelectItem>
+   475→                    ))}
+   476→                  </SelectContent>
+   477→                </Select>
+   478→              </div>
+   479→            </motion.div>
+   480→          )}
+   481→
+   482→          {/* Timer Card */}
+   483→          <motion.div variants={itemVariants}>
+   484→            <Card className="overflow-hidden">
+   485→              <CardContent className="flex flex-col items-center py-10">
+   486→                {/* Mode Selector */}
+   487→                <div className="mb-8 flex gap-2 rounded-xl bg-muted/50 p-1.5">
+   488→                  {MODE_BUTTONS.map((btn) => (
+   489→                    <button
+   490→                      key={btn.value}
+   491→                      onClick={() => switchMode(btn.value)}
+   492→                      className={cn(
+   493→                        'rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200',
+   494→                        mode === btn.value
+   495→                          ? cn('bg-background text-foreground shadow-sm', colors.text)
+   496→                          : 'text-muted-foreground hover:text-foreground'
+   497→                      )}
+   498→                    >
+   499→                      {btn.label}
+   500→                    </button>
+   501→                  ))}
+   502→                </div>
+   503→
+   504→                {/* Circular Timer */}
+   505→                <div className="relative mb-6 flex items-center justify-center">
+   506→                  {/* Pulse animation when running */}
+   507→                  {isRunning && (
+   508→                    <motion.div
+   509→                      className={cn(
+   510→                        'absolute h-72 w-72 rounded-full opacity-20',
+   511→                        mode === 'pomodoro'
+   512→                          ? 'bg-emerald-500'
+   513→                          : mode === 'short-break'
+   514→                            ? 'bg-blue-500'
+   515→                            : 'bg-purple-500'
+   516→                      )}
+   517→                      animate={{
+   518→                        scale: [1, 1.08, 1],
+   519→                        opacity: [0.15, 0.25, 0.15],
+   520→                      }}
+   521→                      transition={{
+   522→                        duration: 2,
+   523→                        repeat: Infinity,
+   524→                        ease: 'easeInOut',
+   525→                      }}
+   526→                    />
+   527→                  )}
+   528→
+   529→                  <svg
+   530→                    width="300"
+   531→                    height="300"
+   532→                    viewBox="0 0 320 320"
+   533→                    className="-rotate-90"
+   534→                  >
+   535→                    <defs>
+   536→                      <linearGradient
+   537→                        id={`gradient-${mode}`}
+   538→                        x1="0%"
+   539→                        y1="0%"
+   540→                        x2="100%"
+   541→                        y2="100%"
+   542→                      >
+   543→                        <stop offset="0%" className={colors.ring.split(' ')[0].replace('from-', '')} style={{ stopColor: colors.stroke, stopOpacity: 1 }} />
+   544→                        <stop offset="50%" style={{ stopColor: colors.stroke, stopOpacity: 0.7 }} />
+   545→                        <stop offset="100%" className={colors.ring.split(' ')[2].replace('to-', '')} style={{ stopColor: colors.stroke, stopOpacity: 1 }} />
+   546→                      </linearGradient>
+   547→                    </defs>
+   548→
+   549→                    {/* Background circle */}
+   550→                    <circle
+   551→                      cx="160"
+   552→                      cy="160"
+   553→                      r={CIRCLE_RADIUS}
+   554→                      fill="none"
+   555→                      stroke="currentColor"
+   556→                      strokeWidth="8"
+   557→                      className="text-muted/30"
+   558→                    />
+   559→
+   560→                    {/* Progress circle */}
+   561→                    <motion.circle
+   562→                      cx="160"
+   563→                      cy="160"
+   564→                      r={CIRCLE_RADIUS}
+   565→                      fill="none"
+   566→                      stroke={colors.stroke}
+   567→                      strokeWidth="8"
+   568→                      strokeLinecap="round"
+   569→                      strokeDasharray={CIRCLE_CIRCUMFERENCE}
+   570→                      strokeDashoffset={dashOffset}
+   571→                      initial={false}
+   572→                      animate={{ strokeDashoffset: dashOffset }}
+   573→                      transition={{ duration: 0.5, ease: 'easeOut' }}
+   574→                      style={{
+   575→                        filter: `drop-shadow(0 0 8px ${colors.stroke}40)`,
+   576→                      }}
+   577→                    />
+   578→                  </svg>
+   579→
+   580→                  {/* Timer Text */}
+   581→                  <div className="absolute flex flex-col items-center gap-1">
+   582→                    <span
+   583→                      className={cn(
+   584→                        'font-mono text-6xl font-bold tabular-nums tracking-tight',
+   585→                        colors.text
+   586→                      )}
+   587→                    >
+   588→                      {formatTime(timeLeft)}
+   589→                    </span>
+   590→                    <span className="text-sm text-muted-foreground">
+   591→                      {MODE_LABELS[mode]}
+   592→                    </span>
+   593→                  </div>
+   594→                </div>
+   595→
+   596→                {/* Controls */}
+   597→                <div className="flex items-center gap-4">
+   598→                  <Button
+   599→                    variant="ghost"
+   600→                    size="icon"
+   601→                    onClick={resetTimer}
+   602→                    className="h-12 w-12 rounded-full"
+   603→                  >
+   604→                    <RotateCcw className="h-5 w-5" />
+   605→                  </Button>
+   606→
+   607→                  <Button
+   608→                    size="icon"
+   609→                    onClick={toggleTimer}
+   610→                    className={cn(
+   611→                      'h-16 w-16 rounded-full shadow-lg transition-all duration-300',
+   612→                      isRunning
+   613→                        ? cn('bg-foreground text-background hover:bg-foreground/90')
+   614→                        : cn(
+   615→                            'bg-gradient-to-br',
+   616→                            colors.ring,
+   617→                            'text-white hover:opacity-90 shadow-lg'
+   618→                          )
+   619→                    )}
+   620→                  >
+   621→                    {isRunning ? (
+   622→                      <Pause className="h-7 w-7" />
+   623→                    ) : (
+   624→                      <Play className="h-7 w-7 mr-[-2px]" />
+   625→                    )}
+   626→                  </Button>
+   627→
+   628→                  <Button
+   629→                    variant="ghost"
+   630→                    size="icon"
+   631→                    onClick={skipTimer}
+   632→                    className="h-12 w-12 rounded-full"
+   633→                  >
+   634→                    <SkipForward className="h-5 w-5" />
+   635→                  </Button>
+   636→                </div>
+   637→
+   638→                {/* Selected task */}
+   639→                {selectedTask && (
+   640→                  <motion.div
+   641→                    initial={{ opacity: 0, y: 8 }}
+   642→                    animate={{ opacity: 1, y: 0 }}
+   643→                    className="mt-6 flex items-center gap-2 text-sm text-muted-foreground"
+   644→                  >
+   645→                    <Target className="h-3.5 w-3.5" />
+   646→                    <span>در حال تمرکز بر:</span>
+   647→                    <span className="font-medium text-foreground">{selectedTask.title}</span>
+   648→                  </motion.div>
+   649→                )}
+   650→
+   651→                {/* Session count */}
+   652→                {sessionCount > 0 && (
+   653→                  <div className="mt-4 flex items-center gap-1.5">
+   654→                    {Array.from({ length: settings.longBreakInterval }).map((_, i) => (
+   655→                      <div
+   656→                        key={i}
+   657→                        className={cn(
+   658→                          'h-2.5 w-2.5 rounded-full transition-all duration-300',
+   659→                          i < sessionCount % settings.longBreakInterval || (sessionCount % settings.longBreakInterval === 0 && sessionCount > 0 && i < settings.longBreakInterval)
+   660→                            ? 'bg-emerald-500'
+   661→                            : 'bg-muted-foreground/20'
+   662→                        )}
+   663→                      />
+   664→                    ))}
+   665→                    <span className="mr-2 text-xs text-muted-foreground">
+   666→                      {toPersianDigits(sessionCount)} پومودورو
+   667→                    </span>
+   668→                  </div>
+   669→                )}
+   670→              </CardContent>
+   671→            </Card>
+   672→          </motion.div>
+   673→
+   674→          {/* Today's Sessions */}
+   675→          <motion.div variants={itemVariants}>
+   676→            <Card>
+   677→              <CardHeader className="pb-3">
+   678→                <div className="flex items-center justify-between">
+   679→                  <CardTitle className="text-base">جلسات امروز</CardTitle>
+   680→                  {todaySessions.length > 0 && (
+   681→                    <Badge variant="secondary" className="gap-1">
+   682→                      <Clock className="h-3 w-3" />
+   683→                      مجموع تمرکز امروز: {formatFocusTime(todayTotalFocusMinutes)}
+   684→                    </Badge>
+   685→                  )}
+   686→                </div>
+   687→              </CardHeader>
+   688→              <CardContent>
+   689→                {todaySessions.length === 0 ? (
+   690→                  <div className="flex flex-col items-center justify-center py-8 text-center text-muted-foreground">
+   691→                    <CheckCircle2 className="mb-2 h-8 w-8 opacity-40" />
+   692→                    <p className="text-sm">هنوز جلسه‌ای امروز ندارید</p>
+   693→                    <p className="text-xs">یک جلسه تمرکز شروع کنید!</p>
+   694→                  </div>
+   695→                ) : (
+   696→                  <div className="space-y-2">
+   697→                    {todaySessions.map((session, idx) => {
+   698→                      const sessionDate = new Date(session.completedAt);
+   699→                      const timeStr = toPersianDigits(
+   700→                        `${String(sessionDate.getHours()).padStart(2, '0')}:${String(sessionDate.getMinutes()).padStart(2, '0')}`
+   701→                      );
+   702→                      const typeLabel = MODE_LABELS[session.type];
+   703→                      const typeIcon =
+   704→                        session.type === 'pomodoro' ? (
+   705→                          <Clock className="h-3 w-3" />
+   706→                        ) : session.type === 'short-break' ? (
+   707→                          <Coffee className="h-3 w-3" />
+   708→                        ) : (
+   709→                          <Sofa className="h-3 w-3" />
+   710→                        );
+   711→                      const typeColor =
+   712→                        session.type === 'pomodoro'
+   713→                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+   714→                          : session.type === 'short-break'
+   715→                            ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400'
+   716→                            : 'bg-purple-500/10 text-purple-600 dark:text-purple-400';
+   717→
+   718→                      return (
+   719→                        <motion.div
+   720→                          key={session.id || idx}
+   721→                          initial={{ opacity: 0, x: 10 }}
+   722→                          animate={{ opacity: 1, x: 0 }}
+   723→                          transition={{ delay: idx * 0.05 }}
+   724→                          className="flex items-center justify-between rounded-lg border px-3 py-2.5"
+   725→                        >
+   726→                          <div className="flex items-center gap-3">
+   727→                            <Badge variant="outline" className={cn('gap-1 text-xs', typeColor)}>
+   728→                              {typeIcon}
+   729→                              {typeLabel}
+   730→                            </Badge>
+   731→                            <span className="text-sm text-muted-foreground">
+   732→                              {toPersianDigits(session.duration)} دقیقه
+   733→                            </span>
+   734→                          </div>
+   735→                          <span className="text-xs text-muted-foreground">{timeStr}</span>
+   736→                        </motion.div>
+   737→                      );
+   738→                    })}
+   739→                  </div>
+   740→                )}
+   741→              </CardContent>
+   742→            </Card>
+   743→          </motion.div>
+   744→        </motion.div>
+   745→      </div>
+   746→    </div>
+   747→  );
+   748→}
