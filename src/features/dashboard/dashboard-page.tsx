@@ -96,16 +96,16 @@ function StatCard({
 }) {
   return (
     <Card className="relative overflow-hidden">
-      <CardContent className="flex items-center gap-4 p-5">
+      <CardContent className="flex items-center gap-3 p-3.5 sm:gap-4 sm:p-5">
         <div
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl"
+          className="flex h-10 w-10 sm:h-12 sm:w-12 shrink-0 items-center justify-center rounded-xl"
           style={{ backgroundColor: `${color}15` }}
         >
-          <Icon className="h-6 w-6" style={{ color }} />
+          <Icon className="h-5 w-5 sm:h-6 sm:w-6" style={{ color }} />
         </div>
         <div className="min-w-0">
-          <p className="text-3xl font-bold leading-none tabular-nums">{count}</p>
-          <p className="mt-1 truncate text-sm text-muted-foreground">{label}</p>
+          <p className="text-2xl sm:text-3xl font-bold leading-none tabular-nums">{count}</p>
+          <p className="mt-0.5 sm:mt-1 truncate text-xs sm:text-sm text-muted-foreground">{label}</p>
         </div>
       </CardContent>
     </Card>
@@ -384,7 +384,7 @@ export function DashboardPage() {
   /* ================================================================ */
   return (
     <motion.div
-      className="mx-auto max-w-7xl space-y-6"
+      className="mx-auto max-w-7xl space-y-4 sm:space-y-6 px-0"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
@@ -392,8 +392,8 @@ export function DashboardPage() {
       {/* Section 1 — Welcome + Date */}
       <motion.div variants={itemVariants}>
         <Card>
-          <CardContent className="p-6">
-            <h1 className="text-2xl font-bold">
+          <CardContent className="p-4 sm:p-6">
+            <h1 className="text-xl sm:text-2xl font-bold">
               سلام! امروز {formatJalaaliDate(new Date())} است
             </h1>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -406,7 +406,7 @@ export function DashboardPage() {
       {/* Section 2 — Quick Stats */}
       <motion.div
         variants={itemVariants}
-        className="grid grid-cols-2 gap-4 lg:grid-cols-4"
+        className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4"
       >
         <StatCard
           icon={CheckSquare}
@@ -435,15 +435,15 @@ export function DashboardPage() {
       </motion.div>
 
       {/* Main 2-column grid */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-[1fr_380px]">
         {/* Left column */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Section 3 — Today's Tasks */}
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <CheckSquare className="h-5 w-5 text-teal-500" />
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <CheckSquare className="h-4 w-4 sm:h-5 sm:w-5 text-teal-500" />
                   وظایف امروز
                   <Badge variant="secondary" className="mr-auto text-xs">
                     {todayTasks.length}
@@ -473,8 +473,8 @@ export function DashboardPage() {
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <FolderKanban className="h-5 w-5 text-blue-500" />
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <FolderKanban className="h-4 w-4 sm:h-5 sm:w-5 text-blue-500" />
                   پروژه‌های فعال
                 </CardTitle>
               </CardHeader>
@@ -504,13 +504,13 @@ export function DashboardPage() {
         </div>
 
         {/* Right column (sidebar widgets) */}
-        <div className="space-y-6">
+        <div className="space-y-4 sm:space-y-6">
           {/* Section 5 — Today's Habits */}
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Repeat className="h-5 w-5 text-purple-500" />
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <Repeat className="h-4 w-4 sm:h-5 sm:w-5 text-purple-500" />
                   عادت‌های امروز
                 </CardTitle>
               </CardHeader>
@@ -540,13 +540,13 @@ export function DashboardPage() {
           <motion.div variants={itemVariants}>
             <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-base">
-                  <Timer className="h-5 w-5 text-orange-500" />
+                <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                  <Timer className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500" />
                   نمودار بهره‌وری هفتگی
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="h-[200px] w-full">
+                <div className="h-[160px] sm:h-[200px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={chartData} barCategoryGap="20%">
                       <CartesianGrid strokeDasharray="3 3" vertical={false} opacity={0.3} />
@@ -600,8 +600,8 @@ export function DashboardPage() {
               />
               <Card className="relative overflow-hidden bg-card">
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2 text-base">
-                    <Sparkles className="h-5 w-5 text-amber-500" />
+                  <CardTitle className="flex items-center gap-2 text-sm sm:text-base">
+                    <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-amber-500" />
                     پیشنهادهای هوشمند
                   </CardTitle>
                 </CardHeader>

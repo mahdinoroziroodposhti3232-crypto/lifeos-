@@ -10,6 +10,7 @@ datasource db {
 model User {
   id            String   @id @default(cuid())
   email         String   @unique
+  password      String
   name          String   @default("کاربر")
   avatar        String?
   bio           String?
@@ -30,6 +31,7 @@ model User {
   focusSessions  FocusSession[]
   calendarEvents CalendarEvent[]
   labels         Label[]
+  notifications  Notification[]
   settings       UserSetting[]
   dashboardLayout DashboardLayout?
 }
@@ -201,6 +203,22 @@ model UserSetting {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, key])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  title     String
+  body      String
+  type      String   @default("info")
+  read      Boolean  @default(false)
+  actionUrl String?
+  entityId  String?
+  entityType String?
+  dueAt     DateTime?
+  createdAt DateTime @default(now())
+  userId    String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model DashboardLayout {

@@ -1,0 +1,1187 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useCallback } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Plus,
+     7→  LayoutGrid,
+     8→  List,
+     9→  Trash2,
+    10→  Archive,
+    11→  Edit3,
+    12→  MoreHorizontal,
+    13→  Inbox,
+    14→  GripVertical,
+    15→  CircleCheckBig,
+    16→  Clock,
+    17→  AlertCircle,
+    18→} from 'lucide-react';
+    19→import { useMutation, useQueryClient } from '@tanstack/react-query';
+    20→import {
+    21→  DndContext,
+    22→  closestCenter,
+    23→  PointerSensor,
+    24→  useSensor,
+    25→  useSensors,
+    26→  type DragEndEvent,
+    27→} from '@dnd-kit/core';
+    28→import {
+    29→  SortableContext,
+    30→  useSortable,
+    31→  verticalListSortingStrategy,
+    32→  arrayMove,
+    33→} from '@dnd-kit/sortable';
+    34→import { CSS } from '@dnd-kit/utilities';
+    35→
+    36→import { useAppStore } from '@/lib/store';
+    37→import { formatJalaaliDateShort, formatJalaaliDate } from '@/lib/jalali';
+    38→import { cn } from '@/lib/utils';
+    39→import {
+    40→  PRIORITY_COLORS,
+    41→  PRIORITY_LABELS,
+    42→  STATUS_LABELS,
+    43→  type Task,
+    44→  type TaskStatus,
+    45→  type TaskPriority,
+    46→} from '@/types';
+    47→
+    48→import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+    49→import { Badge } from '@/components/ui/badge';
+    50→import { Checkbox } from '@/components/ui/checkbox';
+    51→import { Button } from '@/components/ui/button';
+    52→import { Input } from '@/components/ui/input';
+    53→import { Textarea } from '@/components/ui/textarea';
+    54→import { ScrollArea } from '@/components/ui/scroll-area';
+    55→import { Skeleton } from '@/components/ui/skeleton';
+    56→import {
+    57→  Dialog,
+    58→  DialogTrigger,
+    59→  DialogContent,
+    60→  DialogHeader,
+    61→  DialogTitle,
+    62→  DialogFooter,
+    63→} from '@/components/ui/dialog';
+    64→import {
+    65→  Select,
+    66→  SelectTrigger,
+    67→  SelectValue,
+    68→  SelectContent,
+    69→  SelectItem,
+    70→} from '@/components/ui/select';
+    71→import {
+    72→  DropdownMenu,
+    73→  DropdownMenuTrigger,
+    74→  DropdownMenuContent,
+    75→  DropdownMenuItem,
+    76→  DropdownMenuSeparator,
+    77→} from '@/components/ui/dropdown-menu';
+    78→import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+    79→
+    80→/* ------------------------------------------------------------------ */
+    81→/*  Constants                                                          */
+    82→/* ------------------------------------------------------------------ */
+    83→type FilterType = 'all' | 'today' | 'week' | 'important' | 'urgent';
+    84→type ViewMode = 'kanban' | 'list';
+    85→
+    86→interface FilterOption {
+    87→  key: FilterType;
+    88→  label: string;
+    89→}
+    90→
+    91→const FILTERS: FilterOption[] = [
+    92→  { key: 'all', label: 'همه' },
+    93→  { key: 'today', label: 'امروز' },
+    94→  { key: 'week', label: 'این هفته' },
+    95→  { key: 'important', label: 'مهم' },
+    96→  { key: 'urgent', label: 'فوری' },
+    97→];
+    98→
+    99→const KANBAN_COLUMNS: { status: TaskStatus; label: string; color: string }[] = [
+   100→  { status: 'todo', label: 'انجام نشده', color: '#6b7280' },
+   101→  { status: 'in-progress', label: 'در حال انجام', color: '#3b82f6' },
+   102→  { status: 'done', label: 'انجام شده', color: '#22c55e' },
+   103→];
+   104→
+   105→const PRIORITY_OPTIONS: { value: TaskPriority; label: string }[] = [
+   106→  { value: 'low', label: 'کم' },
+   107→  { value: 'medium', label: 'متوسط' },
+   108→  { value: 'high', label: 'زیاد' },
+   109→  { value: 'urgent', label: 'فوری' },
+   110→];
+   111→
+   112→const STATUS_OPTIONS: { value: TaskStatus; label: string }[] = [
+   113→  { value: 'todo', label: 'انجام نشده' },
+   114→  { value: 'in-progress', label: 'در حال انجام' },
+   115→  { value: 'done', label: 'انجام شده' },
+   116→];
+   117→
+   118→const emptyTask: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'userId'> = {
+   119→  title: '',
+   120→  description: '',
+   121→  status: 'todo',
+   122→  priority: 'medium',
+   123→  isArchived: false,
+   124→  order: 0,
+   125→};
+   126→
+   127→/* ------------------------------------------------------------------ */
+   128→/*  Helpers                                                            */
+   129→/* ------------------------------------------------------------------ */
+   130→function getTodayStr(): string {
+   131→  const d = new Date();
+   132→  const y = d.getFullYear();
+   133→  const m = String(d.getMonth() + 1).padStart(2, '0');
+   134→  const day = String(d.getDate()).padStart(2, '0');
+   135→  return `${y}-${m}-${day}`;
+   136→}
+   137→
+   138→function getWeekStartStr(): string {
+   139→  const d = new Date();
+   140→  // Go back to Saturday (Persian week start)
+   141→  const dayOfWeek = d.getDay(); // 0=Sun
+   142→  const diff = (dayOfWeek + 1) % 7; // days since Saturday
+   143→  d.setDate(d.getDate() - diff);
+   144→  const y = d.getFullYear();
+   145→  const m = String(d.getMonth() + 1).padStart(2, '0');
+   146→  const day = String(d.getDate()).padStart(2, '0');
+   147→  return `${y}-${m}-${day}`;
+   148→}
+   149→
+   150→function formatDueDate(dateStr?: string, calendarType?: 'shamsi' | 'miladi'): string {
+   151→  if (!dateStr) return '';
+   152→  if (calendarType === 'shamsi') {
+   153→    const parts = dateStr.split('-');
+   154→    const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+   155→    return formatJalaaliDateShort(d);
+   156→  }
+   157→  return dateStr;
+   158→}
+   159→
+   160→/* ------------------------------------------------------------------ */
+   161→/*  Sortable Task Item (for list view DnD)                             */
+   162→/* ------------------------------------------------------------------ */
+   163→function SortableTaskItem({
+   164→  task,
+   165→  calendarType,
+   166→  onToggleDone,
+   167→  onEdit,
+   168→  onDelete,
+   169→  onArchive,
+   170→}: {
+   171→  task: Task;
+   172→  calendarType: 'shamsi' | 'miladi';
+   173→  onToggleDone: (id: string, done: boolean) => void;
+   174→  onEdit: (task: Task) => void;
+   175→  onDelete: (id: string) => void;
+   176→  onArchive: (id: string) => void;
+   177→}) {
+   178→  const {
+   179→    attributes,
+   180→    listeners,
+   181→    setNodeRef,
+   182→    transform,
+   183→    transition,
+   184→    isDragging,
+   185→  } = useSortable({ id: task.id });
+   186→
+   187→  const style = {
+   188→    transform: CSS.Transform.toString(transform),
+   189→    transition,
+   190→    opacity: isDragging ? 0.5 : 1,
+   191→  };
+   192→
+   193→  const isDone = task.status === 'done';
+   194→  const priorityColor = PRIORITY_COLORS[task.priority];
+   195→
+   196→  return (
+   197→    <div ref={setNodeRef} style={style} className="group">
+   198→      <div className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/50">
+   199→        {/* Drag handle */}
+   200→        <button
+   201→          type="button"
+   202→          className="mt-0.5 cursor-grab text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover:opacity-100 focus:opacity-100"
+   203→          {...attributes}
+   204→          {...listeners}
+   205→        >
+   206→          <GripVertical className="h-4 w-4" />
+   207→        </button>
+   208→
+   209→        {/* Checkbox */}
+   210→        <Checkbox
+   211→          checked={isDone}
+   212→          onCheckedChange={(checked) => onToggleDone(task.id, !!checked)}
+   213→          className="mt-0.5"
+   214→        />
+   215→
+   216→        {/* Content */}
+   217→        <div className="min-w-0 flex-1">
+   218→          <p
+   219→            className={cn(
+   220→              'text-sm font-medium leading-relaxed',
+   221→              isDone && 'text-muted-foreground line-through'
+   222→            )}
+   223→          >
+   224→            {task.title}
+   225→          </p>
+   226→          {task.description && (
+   227→            <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+   228→              {task.description}
+   229→            </p>
+   230→          )}
+   231→          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+   232→            <span
+   233→              className="inline-block h-2 w-2 rounded-full"
+   234→              style={{ backgroundColor: priorityColor }}
+   235→            />
+   236→            <span className="text-xs text-muted-foreground">
+   237→              {PRIORITY_LABELS[task.priority]}
+   238→            </span>
+   239→            {task.dueDate && (
+   240→              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+   241→                <Clock className="h-3 w-3" />
+   242→                {formatDueDate(task.dueDate, calendarType)}
+   243→              </span>
+   244→            )}
+   245→            {task.project && (
+   246→              <Badge
+   247→                variant="secondary"
+   248→                className="text-[10px] px-1.5 py-0"
+   249→              >
+   250→                <span
+   251→                  className="ml-1 inline-block h-2 w-2 rounded-full"
+   252→                  style={{ backgroundColor: task.project.color }}
+   253→                />
+   254→                {task.project.title}
+   255→              </Badge>
+   256→            )}
+   257→            {task.label && (
+   258→              <Badge
+   259→                variant="outline"
+   260→                className="text-[10px] px-1.5 py-0"
+   261→              >
+   262→                {task.label.name}
+   263→              </Badge>
+   264→            )}
+   265→          </div>
+   266→        </div>
+   267→
+   268→        {/* Actions */}
+   269→        <DropdownMenu>
+   270→          <DropdownMenuTrigger asChild>
+   271→            <Button
+   272→              variant="ghost"
+   273→              size="icon"
+   274→              className="h-8 w-8 opacity-0 transition-opacity group-hover:opacity-100"
+   275→            >
+   276→              <MoreHorizontal className="h-4 w-4" />
+   277→            </Button>
+   278→          </DropdownMenuTrigger>
+   279→          <DropdownMenuContent align="start" className="w-40">
+   280→            <DropdownMenuItem onClick={() => onEdit(task)}>
+   281→              <Edit3 className="ml-2 h-4 w-4" />
+   282→              ویرایش
+   283→            </DropdownMenuItem>
+   284→            <DropdownMenuItem onClick={() => onArchive(task.id)}>
+   285→              <Archive className="ml-2 h-4 w-4" />
+   286→              بایگانی
+   287→            </DropdownMenuItem>
+   288→            <DropdownMenuSeparator />
+   289→            <DropdownMenuItem
+   290→              className="text-destructive focus:text-destructive"
+   291→              onClick={() => onDelete(task.id)}
+   292→            >
+   293→              <Trash2 className="ml-2 h-4 w-4" />
+   294→              حذف
+   295→            </DropdownMenuItem>
+   296→          </DropdownMenuContent>
+   297→        </DropdownMenu>
+   298→      </div>
+   299→    </div>
+   300→  );
+   301→}
+   302→
+   303→/* ------------------------------------------------------------------ */
+   304→/*  Kanban Task Card                                                   */
+   305→/* ------------------------------------------------------------------ */
+   306→function KanbanTaskCard({
+   307→  task,
+   308→  calendarType,
+   309→  onToggleDone,
+   310→  onEdit,
+   311→  onDelete,
+   312→  onArchive,
+   313→}: {
+   314→  task: Task;
+   315→  calendarType: 'shamsi' | 'miladi';
+   316→  onToggleDone: (id: string, done: boolean) => void;
+   317→  onEdit: (task: Task) => void;
+   318→  onDelete: (id: string) => void;
+   319→  onArchive: (id: string) => void;
+   320→}) {
+   321→  const isDone = task.status === 'done';
+   322→  const priorityColor = PRIORITY_COLORS[task.priority];
+   323→
+   324→  return (
+   325→    <motion.div
+   326→      layout
+   327→      initial={{ opacity: 0, scale: 0.95 }}
+   328→      animate={{ opacity: 1, scale: 1 }}
+   329→      exit={{ opacity: 0, scale: 0.95 }}
+   330→      transition={{ duration: 0.2 }}
+   331→    >
+   332→      <div className="group rounded-lg border border-border/60 bg-card p-3 shadow-sm transition-all hover:shadow-md">
+   333→        {/* Priority indicator */}
+   334→        <div
+   335→          className="absolute right-0 top-3 h-8 w-1 rounded-l-full"
+   336→          style={{
+   337→            backgroundColor: priorityColor,
+   338→            position: 'relative',
+   339→            right: '-12px',
+   340→            top: '-4px',
+   341→            borderRadius: '0 4px 4px 0',
+   342→          }}
+   343→        />
+   344→
+   345→        <div className="flex items-start gap-2">
+   346→          <Checkbox
+   347→            checked={isDone}
+   348→            onCheckedChange={(checked) => onToggleDone(task.id, !!checked)}
+   349→            className="mt-0.5 shrink-0"
+   350→          />
+   351→          <div className="min-w-0 flex-1">
+   352→            <p
+   353→              className={cn(
+   354→                'text-sm font-medium leading-relaxed',
+   355→                isDone && 'text-muted-foreground line-through'
+   356→              )}
+   357→            >
+   358→              {task.title}
+   359→            </p>
+   360→            {task.description && (
+   361→              <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+   362→                {task.description}
+   363→              </p>
+   364→            )}
+   365→            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+   366→              {task.dueDate && (
+   367→                <span className="flex items-center gap-1 rounded-md bg-accent/60 px-1.5 py-0.5 text-[10px] text-muted-foreground">
+   368→                  <Clock className="h-2.5 w-2.5" />
+   369→                  {formatDueDate(task.dueDate, calendarType)}
+   370→                </span>
+   371→              )}
+   372→              {task.project && (
+   373→                <Badge
+   374→                  variant="secondary"
+   375→                  className="text-[10px] px-1.5 py-0"
+   376→                >
+   377→                  <span
+   378→                    className="ml-1 inline-block h-1.5 w-1.5 rounded-full"
+   379→                    style={{ backgroundColor: task.project.color }}
+   380→                  />
+   381→                  {task.project.title}
+   382→                </Badge>
+   383→              )}
+   384→              {task.label && (
+   385→                <Badge
+   386→                  variant="outline"
+   387→                  className="text-[10px] px-1.5 py-0"
+   388→                >
+   389→                  {task.label.name}
+   390→                </Badge>
+   391→              )}
+   392→            </div>
+   393→          </div>
+   394→
+   395→          {/* Actions dropdown */}
+   396→          <DropdownMenu>
+   397→            <DropdownMenuTrigger asChild>
+   398→              <Button
+   399→                variant="ghost"
+   400→                size="icon"
+   401→                className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100"
+   402→              >
+   403→                <MoreHorizontal className="h-3.5 w-3.5" />
+   404→              </Button>
+   405→            </DropdownMenuTrigger>
+   406→            <DropdownMenuContent align="end" className="w-40">
+   407→              <DropdownMenuItem onClick={() => onEdit(task)}>
+   408→                <Edit3 className="ml-2 h-4 w-4" />
+   409→                ویرایش
+   410→              </DropdownMenuItem>
+   411→              <DropdownMenuItem onClick={() => onArchive(task.id)}>
+   412→                <Archive className="ml-2 h-4 w-4" />
+   413→                بایگانی
+   414→              </DropdownMenuItem>
+   415→              <DropdownMenuSeparator />
+   416→              <DropdownMenuItem
+   417→                className="text-destructive focus:text-destructive"
+   418→                onClick={() => onDelete(task.id)}
+   419→              >
+   420→                <Trash2 className="ml-2 h-4 w-4" />
+   421→                حذف
+   422→              </DropdownMenuItem>
+   423→            </DropdownMenuContent>
+   424→          </DropdownMenu>
+   425→        </div>
+   426→      </div>
+   427→    </motion.div>
+   428→  );
+   429→}
+   430→
+   431→/* ------------------------------------------------------------------ */
+   432→/*  Kanban Column                                                      */
+   433→/* ------------------------------------------------------------------ */
+   434→function KanbanColumn({
+   435→  status,
+   436→  label,
+   437→  color,
+   438→  tasks,
+   439→  calendarType,
+   440→  onToggleDone,
+   441→  onEdit,
+   442→  onDelete,
+   443→  onArchive,
+   444→}: {
+   445→  status: TaskStatus;
+   446→  label: string;
+   447→  color: string;
+   448→  tasks: Task[];
+   449→  calendarType: 'shamsi' | 'miladi';
+   450→  onToggleDone: (id: string, done: boolean) => void;
+   451→  onEdit: (task: Task) => void;
+   452→  onDelete: (id: string) => void;
+   453→  onArchive: (id: string) => void;
+   454→}) {
+   455→  return (
+   456→    <div className="flex min-w-[280px] flex-1 flex-col rounded-xl border bg-muted/30 p-3">
+   457→      {/* Column header */}
+   458→      <div className="mb-3 flex items-center gap-2 px-1">
+   459→        <div className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+   460→        <h3 className="text-sm font-semibold">{label}</h3>
+   461→        <Badge variant="secondary" className="mr-auto text-[10px]">
+   462→          {tasks.length}
+   463→        </Badge>
+   464→      </div>
+   465→
+   466→      {/* Tasks */}
+   467→      <ScrollArea className="flex-1">
+   468→        <div className="space-y-2 px-1">
+   469→          <AnimatePresence mode="popLayout">
+   470→            {tasks.map((task) => (
+   471→              <KanbanTaskCard
+   472→                key={task.id}
+   473→                task={task}
+   474→                calendarType={calendarType}
+   475→                onToggleDone={onToggleDone}
+   476→                onEdit={onEdit}
+   477→                onDelete={onDelete}
+   478→                onArchive={onArchive}
+   479→              />
+   480→            ))}
+   481→          </AnimatePresence>
+   482→          {tasks.length === 0 && (
+   483→            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+   484→              <Inbox className="mb-2 h-8 w-8 opacity-30" />
+   485→              <p className="text-xs">وظیفه‌ای نیست</p>
+   486→            </div>
+   487→          )}
+   488→        </div>
+   489→      </ScrollArea>
+   490→    </div>
+   491→  );
+   492→}
+   493→
+   494→/* ------------------------------------------------------------------ */
+   495→/*  Task Dialog (Add / Edit)                                           */
+   496→/* ------------------------------------------------------------------ */
+   497→function TaskDialog({
+   498→  open,
+   499→  onOpenChange,
+   500→  editingTask,
+   501→  projects,
+   502→  labels,
+   503→}: {
+   504→  open: boolean;
+   505→  onOpenChange: (open: boolean) => void;
+   506→  editingTask: Task | null;
+   507→  projects: { id: string; title: string; color: string }[];
+   508→  labels: { id: string; name: string; color: string }[];
+   509→}) {
+   510→  const queryClient = useQueryClient();
+   511→  const isEditing = !!editingTask;
+   512→
+   513→  const [form, setForm] = useState({
+   514→    title: '',
+   515→    description: '',
+   516→    priority: 'medium' as TaskPriority,
+   517→    status: 'todo' as TaskStatus,
+   518→    dueDate: '',
+   519→    dueTime: '',
+   520→    projectId: '',
+   521→    labelId: '',
+   522→    estimatedMinutes: '',
+   523→  });
+   524→
+   525→  // Reset form when dialog opens or editingTask changes
+   526→  const handleOpenChange = useCallback(
+   527→    (nextOpen: boolean) => {
+   528→      if (nextOpen && editingTask) {
+   529→        setForm({
+   530→          title: editingTask.title,
+   531→          description: editingTask.description || '',
+   532→          priority: editingTask.priority,
+   533→          status: editingTask.status,
+   534→          dueDate: editingTask.dueDate || '',
+   535→          dueTime: editingTask.dueTime || '',
+   536→          projectId: editingTask.projectId || '',
+   537→          labelId: editingTask.labelId || '',
+   538→          estimatedMinutes: editingTask.estimatedMinutes
+   539→            ? String(editingTask.estimatedMinutes)
+   540→            : '',
+   541→        });
+   542→      } else if (nextOpen && !editingTask) {
+   543→        setForm({
+   544→          title: '',
+   545→          description: '',
+   546→          priority: 'medium',
+   547→          status: 'todo',
+   548→          dueDate: '',
+   549→          dueTime: '',
+   550→          projectId: '',
+   551→          labelId: '',
+   552→          estimatedMinutes: '',
+   553→        });
+   554→      }
+   555→      onOpenChange(nextOpen);
+   556→    },
+   557→    [editingTask, onOpenChange]
+   558→  );
+   559→
+   560→  const updateField = <K extends keyof typeof form>(key: K, value: (typeof form)[K]) => {
+   561→    setForm((prev) => ({ ...prev, [key]: value }));
+   562→  };
+   563→
+   564→  const createMutation = useMutation({
+   565→    mutationFn: async (data: Record<string, unknown>) => {
+   566→      const res = await fetch('/api/tasks', {
+   567→        method: 'POST',
+   568→        headers: { 'Content-Type': 'application/json' },
+   569→        body: JSON.stringify({
+   570→          ...data,
+   571→          estimatedMinutes: data.estimatedMinutes
+   572→            ? Number(data.estimatedMinutes)
+   573→            : null,
+   574→        }),
+   575→      });
+   576→      if (!res.ok) throw new Error('خطا در ایجاد وظیفه');
+   577→      return res.json();
+   578→    },
+   579→    onSuccess: () => {
+   580→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   581→      handleOpenChange(false);
+   582→    },
+   583→  });
+   584→
+   585→  const updateMutation = useMutation({
+   586→    mutationFn: async (data: Record<string, unknown>) => {
+   587→      const res = await fetch('/api/tasks', {
+   588→        method: 'PUT',
+   589→        headers: { 'Content-Type': 'application/json' },
+   590→        body: JSON.stringify({
+   591→          ...data,
+   592→          id: editingTask!.id,
+   593→          estimatedMinutes: data.estimatedMinutes
+   594→            ? Number(data.estimatedMinutes)
+   595→            : null,
+   596→          projectId: data.projectId || null,
+   597→          labelId: data.labelId || null,
+   598→        }),
+   599→      });
+   600→      if (!res.ok) throw new Error('خطا در بروزرسانی وظیفه');
+   601→      return res.json();
+   602→    },
+   603→    onSuccess: () => {
+   604→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   605→      handleOpenChange(false);
+   606→    },
+   607→  });
+   608→
+   609→  const handleSubmit = (e: React.FormEvent) => {
+   610→    e.preventDefault();
+   611→    if (!form.title.trim()) return;
+   612→
+   613→    const payload = {
+   614→      title: form.title.trim(),
+   615→      description: form.description.trim() || null,
+   616→      priority: form.priority,
+   617→      status: form.status,
+   618→      dueDate: form.dueDate || null,
+   619→      dueTime: form.dueTime || null,
+   620→      projectId: form.projectId || null,
+   621→      labelId: form.labelId || null,
+   622→      estimatedMinutes: form.estimatedMinutes || null,
+   623→    };
+   624→
+   625→    if (isEditing) {
+   626→      updateMutation.mutate(payload);
+   627→    } else {
+   628→      createMutation.mutate(payload);
+   629→    }
+   630→  };
+   631→
+   632→  const isPending = createMutation.isPending || updateMutation.isPending;
+   633→
+   634→  return (
+   635→    <Dialog open={open} onOpenChange={handleOpenChange}>
+   636→      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" dir="rtl">
+   637→        <DialogHeader>
+   638→          <DialogTitle>
+   639→            {isEditing ? 'ویرایش وظیفه' : 'وظیفه جدید'}
+   640→          </DialogTitle>
+   641→        </DialogHeader>
+   642→
+   643→        <form onSubmit={handleSubmit} className="space-y-4">
+   644→          {/* Title */}
+   645→          <div className="space-y-1.5">
+   646→            <label className="text-sm font-medium">
+   647→              عنوان <span className="text-destructive">*</span>
+   648→            </label>
+   649→            <Input
+   650→              value={form.title}
+   651→              onChange={(e) => updateField('title', e.target.value)}
+   652→              placeholder="عنوان وظیفه..."
+   653→              required
+   654→            />
+   655→          </div>
+   656→
+   657→          {/* Description */}
+   658→          <div className="space-y-1.5">
+   659→            <label className="text-sm font-medium">توضیحات</label>
+   660→            <Textarea
+   661→              value={form.description}
+   662→              onChange={(e) => updateField('description', e.target.value)}
+   663→              placeholder="توضیحات وظیفه..."
+   664→              rows={3}
+   665→            />
+   666→          </div>
+   667→
+   668→          {/* Priority & Status */}
+   669→          <div className="grid grid-cols-2 gap-3">
+   670→            <div className="space-y-1.5">
+   671→              <label className="text-sm font-medium">اولویت</label>
+   672→              <Select
+   673→                value={form.priority}
+   674→                onValueChange={(v) => updateField('priority', v as TaskPriority)}
+   675→              >
+   676→                <SelectTrigger className="w-full">
+   677→                  <SelectValue />
+   678→                </SelectTrigger>
+   679→                <SelectContent>
+   680→                  {PRIORITY_OPTIONS.map((opt) => (
+   681→                    <SelectItem key={opt.value} value={opt.value}>
+   682→                      {opt.label}
+   683→                    </SelectItem>
+   684→                  ))}
+   685→                </SelectContent>
+   686→              </Select>
+   687→            </div>
+   688→            <div className="space-y-1.5">
+   689→              <label className="text-sm font-medium">وضعیت</label>
+   690→              <Select
+   691→                value={form.status}
+   692→                onValueChange={(v) => updateField('status', v as TaskStatus)}
+   693→              >
+   694→                <SelectTrigger className="w-full">
+   695→                  <SelectValue />
+   696→                </SelectTrigger>
+   697→                <SelectContent>
+   698→                  {STATUS_OPTIONS.map((opt) => (
+   699→                    <SelectItem key={opt.value} value={opt.value}>
+   700→                      {opt.label}
+   701→                    </SelectItem>
+   702→                  ))}
+   703→                </SelectContent>
+   704→              </Select>
+   705→            </div>
+   706→          </div>
+   707→
+   708→          {/* Due Date & Time */}
+   709→          <div className="grid grid-cols-2 gap-3">
+   710→            <div className="space-y-1.5">
+   711→              <label className="text-sm font-medium">تاریخ سررسید</label>
+   712→              <Input
+   713→                type="date"
+   714→                value={form.dueDate}
+   715→                onChange={(e) => updateField('dueDate', e.target.value)}
+   716→              />
+   717→            </div>
+   718→            <div className="space-y-1.5">
+   719→              <label className="text-sm font-medium">ساعت سررسید</label>
+   720→              <Input
+   721→                type="time"
+   722→                value={form.dueTime}
+   723→                onChange={(e) => updateField('dueTime', e.target.value)}
+   724→              />
+   725→            </div>
+   726→          </div>
+   727→
+   728→          {/* Project & Label */}
+   729→          <div className="grid grid-cols-2 gap-3">
+   730→            <div className="space-y-1.5">
+   731→              <label className="text-sm font-medium">پروژه</label>
+   732→              <Select
+   733→                value={form.projectId}
+   734→                onValueChange={(v) => updateField('projectId', v)}
+   735→              >
+   736→                <SelectTrigger className="w-full">
+   737→                  <SelectValue placeholder="انتخاب پروژه" />
+   738→                </SelectTrigger>
+   739→                <SelectContent>
+   740→                  {projects.map((p) => (
+   741→                    <SelectItem key={p.id} value={p.id}>
+   742→                      <span className="flex items-center gap-2">
+   743→                        <span
+   744→                          className="h-2 w-2 rounded-full"
+   745→                          style={{ backgroundColor: p.color }}
+   746→                        />
+   747→                        {p.title}
+   748→                      </span>
+   749→                    </SelectItem>
+   750→                  ))}
+   751→                </SelectContent>
+   752→              </Select>
+   753→            </div>
+   754→            <div className="space-y-1.5">
+   755→              <label className="text-sm font-medium">برچسب</label>
+   756→              <Select
+   757→                value={form.labelId}
+   758→                onValueChange={(v) => updateField('labelId', v)}
+   759→              >
+   760→                <SelectTrigger className="w-full">
+   761→                  <SelectValue placeholder="انتخاب برچسب" />
+   762→                </SelectTrigger>
+   763→                <SelectContent>
+   764→                  {labels.map((l) => (
+   765→                    <SelectItem key={l.id} value={l.id}>
+   766→                      <span className="flex items-center gap-2">
+   767→                        <span
+   768→                          className="h-2 w-2 rounded-full"
+   769→                          style={{ backgroundColor: l.color }}
+   770→                        />
+   771→                        {l.name}
+   772→                      </span>
+   773→                    </SelectItem>
+   774→                  ))}
+   775→                </SelectContent>
+   776→              </Select>
+   777→            </div>
+   778→          </div>
+   779→
+   780→          {/* Estimated Minutes */}
+   781→          <div className="space-y-1.5">
+   782→            <label className="text-sm font-medium">زمان تخمینی (دقیقه)</label>
+   783→            <Input
+   784→              type="number"
+   785→              min="0"
+   786→              value={form.estimatedMinutes}
+   787→              onChange={(e) => updateField('estimatedMinutes', e.target.value)}
+   788→              placeholder="مثلاً ۳۰"
+   789→            />
+   790→          </div>
+   791→
+   792→          {/* Buttons */}
+   793→          <DialogFooter className="gap-2 pt-2">
+   794→            <Button
+   795→              type="button"
+   796→              variant="outline"
+   797→              onClick={() => handleOpenChange(false)}
+   798→            >
+   799→              انصراف
+   800→            </Button>
+   801→            <Button type="submit" disabled={isPending || !form.title.trim()}>
+   802→              {isPending ? 'در حال ذخیره...' : isEditing ? 'بروزرسانی' : 'ایجاد وظیفه'}
+   803→            </Button>
+   804→          </DialogFooter>
+   805→        </form>
+   806→      </DialogContent>
+   807→    </Dialog>
+   808→  );
+   809→}
+   810→
+   811→/* ------------------------------------------------------------------ */
+   812→/*  Main Tasks Page                                                    */
+   813→/* ------------------------------------------------------------------ */
+   814→export function TasksPage() {
+   815→  const queryClient = useQueryClient();
+   816→  const { tasks, projects, labels, settings } = useAppStore();
+   817→
+   818→  /* ---------- state ---------- */
+   819→  const [filter, setFilter] = useState<FilterType>('all');
+   820→  const [viewMode, setViewMode] = useState<ViewMode>('kanban');
+   821→  const [dialogOpen, setDialogOpen] = useState(false);
+   822→  const [editingTask, setEditingTask] = useState<Task | null>(null);
+   823→  const [mobileTab, setMobileTab] = useState<string>('todo');
+   824→
+   825→  /* ---------- sensors for DnD ---------- */
+   826→  const sensors = useSensors(
+   827→    useSensor(PointerSensor, {
+   828→      activationConstraint: { distance: 5 },
+   829→    })
+   830→  );
+   831→
+   832→  /* ---------- filtered tasks ---------- */
+   833→  const filteredTasks = useMemo(() => {
+   834→    let result = tasks.filter((t) => !t.isArchived);
+   835→
+   836→    const todayStr = getTodayStr();
+   837→    const weekStartStr = getWeekStartStr();
+   838→
+   839→    switch (filter) {
+   840→      case 'today':
+   841→        result = result.filter((t) => t.dueDate === todayStr);
+   842→        break;
+   843→      case 'week':
+   844→        result = result.filter(
+   845→          (t) => t.dueDate && t.dueDate >= weekStartStr && t.dueDate <= todayStr
+   846→        );
+   847→        break;
+   848→      case 'important':
+   849→        result = result.filter((t) => t.priority === 'high' || t.priority === 'urgent');
+   850→        break;
+   851→      case 'urgent':
+   852→        result = result.filter((t) => t.priority === 'urgent');
+   853→        break;
+   854→    }
+   855→
+   856→    return result;
+   857→  }, [tasks, filter]);
+   858→
+   859→  /* ---------- tasks by status ---------- */
+   860→  const tasksByStatus = useMemo(() => {
+   861→    const map: Record<TaskStatus, Task[]> = {
+   862→      todo: [],
+   863→      'in-progress': [],
+   864→      done: [],
+   865→      archived: [],
+   866→    };
+   867→    for (const t of filteredTasks) {
+   868→      map[t.status]?.push(t);
+   869→    }
+   870→    return map;
+   871→  }, [filteredTasks]);
+   872→
+   873→  /* ---------- list view sorted IDs ---------- */
+   874→  const listTaskIds = useMemo(
+   875→    () => filteredTasks.map((t) => t.id),
+   876→    [filteredTasks]
+   877→  );
+   878→
+   879→  /* ---------- mutations ---------- */
+   880→  const toggleDoneMutation = useMutation({
+   881→    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+   882→      const res = await fetch('/api/tasks', {
+   883→        method: 'PUT',
+   884→        headers: { 'Content-Type': 'application/json' },
+   885→        body: JSON.stringify({ id, status }),
+   886→      });
+   887→      return res.json();
+   888→    },
+   889→    onSuccess: () => {
+   890→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   891→    },
+   892→  });
+   893→
+   894→  const deleteMutation = useMutation({
+   895→    mutationFn: async (id: string) => {
+   896→      const res = await fetch(`/api/tasks?id=${id}`, { method: 'DELETE' });
+   897→      if (!res.ok) throw new Error('خطا در حذف');
+   898→      return res.json();
+   899→    },
+   900→    onSuccess: () => {
+   901→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   902→    },
+   903→  });
+   904→
+   905→  const archiveMutation = useMutation({
+   906→    mutationFn: async (id: string) => {
+   907→      const res = await fetch('/api/tasks', {
+   908→        method: 'PUT',
+   909→        headers: { 'Content-Type': 'application/json' },
+   910→        body: JSON.stringify({ id, isArchived: true }),
+   911→      });
+   912→      return res.json();
+   913→    },
+   914→    onSuccess: () => {
+   915→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   916→    },
+   917→  });
+   918→
+   919→  const reorderMutation = useMutation({
+   920→    mutationFn: async (reorderedTasks: { id: string; order: number }[]) => {
+   921→      await Promise.all(
+   922→        reorderedTasks.map((t) =>
+   923→          fetch('/api/tasks', {
+   924→            method: 'PUT',
+   925→            headers: { 'Content-Type': 'application/json' },
+   926→            body: JSON.stringify({ id: t.id, order: t.order }),
+   927→          })
+   928→        )
+   929→      );
+   930→    },
+   931→    onSuccess: () => {
+   932→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   933→    },
+   934→  });
+   935→
+   936→  /* ---------- handlers ---------- */
+   937→  const handleToggleDone = (id: string, done: boolean) => {
+   938→    toggleDoneMutation.mutate({ id, status: done ? 'done' : 'todo' });
+   939→  };
+   940→
+   941→  const handleEdit = (task: Task) => {
+   942→    setEditingTask(task);
+   943→    setDialogOpen(true);
+   944→  };
+   945→
+   946→  const handleDelete = (id: string) => {
+   947→    deleteMutation.mutate(id);
+   948→  };
+   949→
+   950→  const handleArchive = (id: string) => {
+   951→    archiveMutation.mutate(id);
+   952→  };
+   953→
+   954→  const handleOpenAddDialog = () => {
+   955→    setEditingTask(null);
+   956→    setDialogOpen(true);
+   957→  };
+   958→
+   959→  const handleDialogClose = (open: boolean) => {
+   960→    setDialogOpen(open);
+   961→    if (!open) setEditingTask(null);
+   962→  };
+   963→
+   964→  const handleDragEnd = (event: DragEndEvent) => {
+   965→    const { active, over } = event;
+   966→    if (!over || active.id === over.id) return;
+   967→
+   968→    const oldIndex = listTaskIds.indexOf(active.id as string);
+   969→    const newIndex = listTaskIds.indexOf(over.id as string);
+   970→    if (oldIndex === -1 || newIndex === -1) return;
+   971→
+   972→    const moved = arrayMove(filteredTasks, oldIndex, newIndex);
+   973→    const reordered = moved.map((t, i) => ({ id: t.id, order: i }));
+   974→    reorderMutation.mutate(reordered);
+   975→  };
+   976→
+   977→  /* ---------- kanban column task count badge color ---------- */
+   978→  const columnCounts = {
+   979→    todo: tasksByStatus.todo.length,
+   980→    'in-progress': tasksByStatus['in-progress'].length,
+   981→    done: tasksByStatus.done.length,
+   982→  };
+   983→
+   984→  /* ---------- projects & labels for dialog ---------- */
+   985→  const projectOptions = useMemo(
+   986→    () => projects.map((p) => ({ id: p.id, title: p.title, color: p.color })),
+   987→    [projects]
+   988→  );
+   989→  const labelOptions = useMemo(
+   990→    () => labels.map((l) => ({ id: l.id, name: l.name, color: l.color })),
+   991→    [labels]
+   992→  );
+   993→
+   994→  /* ================================================================ */
+   995→  /*  Render                                                           */
+   996→  /* ================================================================ */
+   997→  return (
+   998→    <div className="mx-auto max-w-7xl space-y-5">
+   999→      {/* Header */}
+  1000→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+  1001→        <div>
+  1002→          <h1 className="text-2xl font-bold">وظایف</h1>
+  1003→          <p className="text-sm text-muted-foreground">
+  1004→            {filteredTasks.length} وظیفه
+  1005→          </p>
+  1006→        </div>
+  1007→
+  1008→        <div className="flex items-center gap-2">
+  1009→          {/* View toggle */}
+  1010→          <div className="flex items-center rounded-lg border bg-muted p-0.5">
+  1011→            <Button
+  1012→              variant={viewMode === 'kanban' ? 'default' : 'ghost'}
+  1013→              size="sm"
+  1014→              className="h-7 gap-1.5 px-2.5"
+  1015→              onClick={() => setViewMode('kanban')}
+  1016→            >
+  1017→              <LayoutGrid className="h-3.5 w-3.5" />
+  1018→              <span className="hidden sm:inline">کانبان</span>
+  1019→            </Button>
+  1020→            <Button
+  1021→              variant={viewMode === 'list' ? 'default' : 'ghost'}
+  1022→              size="sm"
+  1023→              className="h-7 gap-1.5 px-2.5"
+  1024→              onClick={() => setViewMode('list')}
+  1025→            >
+  1026→              <List className="h-3.5 w-3.5" />
+  1027→              <span className="hidden sm:inline">فهرست</span>
+  1028→            </Button>
+  1029→          </div>
+  1030→
+  1031→          {/* Add task button */}
+  1032→          <Button onClick={handleOpenAddDialog} size="sm" className="gap-1.5">
+  1033→            <Plus className="h-4 w-4" />
+  1034→            وظیفه جدید
+  1035→          </Button>
+  1036→        </div>
+  1037→      </div>
+  1038→
+  1039→      {/* Filters */}
+  1040→      <div className="flex flex-wrap gap-2">
+  1041→        {FILTERS.map((f) => (
+  1042→          <Button
+  1043→            key={f.key}
+  1044→            variant={filter === f.key ? 'default' : 'outline'}
+  1045→            size="sm"
+  1046→            className="h-8"
+  1047→            onClick={() => setFilter(f.key)}
+  1048→          >
+  1049→            {f.label}
+  1050→          </Button>
+  1051→        ))}
+  1052→      </div>
+  1053→
+  1054→      {/* Content */}
+  1055→      {filteredTasks.length === 0 ? (
+  1056→        /* Empty state */
+  1057→        <motion.div
+  1058→          initial={{ opacity: 0, y: 20 }}
+  1059→          animate={{ opacity: 1, y: 0 }}
+  1060→          className="flex flex-col items-center justify-center rounded-xl border border-dashed py-20"
+  1061→        >
+  1062→          <Inbox className="mb-4 h-16 w-16 text-muted-foreground/30" />
+  1063→          <h3 className="text-lg font-semibold text-muted-foreground">
+  1064→            هنوز وظیفه‌ای ندارید
+  1065→          </h3>
+  1066→          <p className="mt-1 text-sm text-muted-foreground/70">
+  1067→            با کلیک روی دکمه زیر اولین وظیفه خود را ایجاد کنید
+  1068→          </p>
+  1069→          <Button className="mt-4 gap-1.5" onClick={handleOpenAddDialog}>
+  1070→            <Plus className="h-4 w-4" />
+  1071→            وظیفه جدید
+  1072→          </Button>
+  1073→        </motion.div>
+  1074→      ) : viewMode === 'kanban' ? (
+  1075→        /* ============================================================ */
+  1076→        /*  Kanban View (desktop: 3 columns, mobile: tabs)             */
+  1077→        /* ============================================================ */
+  1078→        <>
+  1079→          {/* Desktop: 3-column layout */}
+  1080→          <div className="hidden gap-4 md:grid md:grid-cols-3">
+  1081→            {KANBAN_COLUMNS.map((col) => (
+  1082→              <KanbanColumn
+  1083→                key={col.status}
+  1084→                status={col.status}
+  1085→                label={col.label}
+  1086→                color={col.color}
+  1087→                tasks={tasksByStatus[col.status]}
+  1088→                calendarType={settings.calendarType}
+  1089→                onToggleDone={handleToggleDone}
+  1090→                onEdit={handleEdit}
+  1091→                onDelete={handleDelete}
+  1092→                onArchive={handleArchive}
+  1093→              />
+  1094→            ))}
+  1095→          </div>
+  1096→
+  1097→          {/* Mobile: Tabs */}
+  1098→          <div className="md:hidden">
+  1099→            <Tabs
+  1100→              value={mobileTab}
+  1101→              onValueChange={setMobileTab}
+  1102→              dir="rtl"
+  1103→            >
+  1104→              <TabsList className="w-full justify-stretch">
+  1105→                {KANBAN_COLUMNS.map((col) => (
+  1106→                  <TabsTrigger
+  1107→                    key={col.status}
+  1108→                    value={col.status}
+  1109→                    className="flex-1 gap-1.5"
+  1110→                  >
+  1111→                    {col.label}
+  1112→                    <Badge variant="secondary" className="text-[10px]">
+  1113→                      {columnCounts[col.status]}
+  1114→                    </Badge>
+  1115→                  </TabsTrigger>
+  1116→                ))}
+  1117→              </TabsList>
+  1118→
+  1119→              {KANBAN_COLUMNS.map((col) => (
+  1120→                <TabsContent key={col.status} value={col.status}>
+  1121→                  <div className="space-y-2 pt-2">
+  1122→                    <AnimatePresence mode="popLayout">
+  1123→                      {tasksByStatus[col.status].map((task) => (
+  1124→                        <KanbanTaskCard
+  1125→                          key={task.id}
+  1126→                          task={task}
+  1127→                          calendarType={settings.calendarType}
+  1128→                          onToggleDone={handleToggleDone}
+  1129→                          onEdit={handleEdit}
+  1130→                          onDelete={handleDelete}
+  1131→                          onArchive={handleArchive}
+  1132→                        />
+  1133→                      ))}
+  1134→                    </AnimatePresence>
+  1135→                    {tasksByStatus[col.status].length === 0 && (
+  1136→                      <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+  1137→                        <Inbox className="mb-2 h-8 w-8 opacity-30" />
+  1138→                        <p className="text-xs">وظیفه‌ای نیست</p>
+  1139→                      </div>
+  1140→                    )}
+  1141→                  </div>
+  1142→                </TabsContent>
+  1143→              ))}
+  1144→            </Tabs>
+  1145→          </div>
+  1146→        </>
+  1147→      ) : (
+  1148→        /* ============================================================ */
+  1149→        /*  List View (with drag & drop)                                */
+  1150→        /* ============================================================ */
+  1151→        <DndContext
+  1152→          sensors={sensors}
+  1153→          collisionDetection={closestCenter}
+  1154→          onDragEnd={handleDragEnd}
+  1155→        >
+  1156→          <SortableContext
+  1157→            items={listTaskIds}
+  1158→            strategy={verticalListSortingStrategy}
+  1159→          >
+  1160→            <div className="space-y-2">
+  1161→              {filteredTasks.map((task) => (
+  1162→                <SortableTaskItem
+  1163→                  key={task.id}
+  1164→                  task={task}
+  1165→                  calendarType={settings.calendarType}
+  1166→                  onToggleDone={handleToggleDone}
+  1167→                  onEdit={handleEdit}
+  1168→                  onDelete={handleDelete}
+  1169→                  onArchive={handleArchive}
+  1170→                />
+  1171→              ))}
+  1172→            </div>
+  1173→          </SortableContext>
+  1174→        </DndContext>
+  1175→      )}
+  1176→
+  1177→      {/* Task Dialog */}
+  1178→      <TaskDialog
+  1179→        open={dialogOpen}
+  1180→        onOpenChange={handleDialogClose}
+  1181→        editingTask={editingTask}
+  1182→        projects={projectOptions}
+  1183→        labels={labelOptions}
+  1184→      />
+  1185→    </div>
+  1186→  );
+  1187→}

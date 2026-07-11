@@ -323,8 +323,8 @@ export default function FocusPage() {
 
   /* ---- render ---- */
   return (
-    <div className="h-full overflow-y-auto pb-8" dir="rtl">
-      <div className="mx-auto max-w-3xl space-y-8 px-4 pt-8">
+    <div className="h-full overflow-y-auto pb-8 overflow-x-hidden" dir="rtl">
+      <div className="mx-auto max-w-3xl space-y-6 sm:space-y-8 px-3 sm:px-4 pt-6 sm:pt-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -482,15 +482,15 @@ export default function FocusPage() {
           {/* Timer Card */}
           <motion.div variants={itemVariants}>
             <Card className="overflow-hidden">
-              <CardContent className="flex flex-col items-center py-10">
+              <CardContent className="flex flex-col items-center py-6 sm:py-10">
                 {/* Mode Selector */}
-                <div className="mb-8 flex gap-2 rounded-xl bg-muted/50 p-1.5">
+                <div className="mb-4 sm:mb-8 flex gap-2 rounded-xl bg-muted/50 p-1.5">
                   {MODE_BUTTONS.map((btn) => (
                     <button
                       key={btn.value}
                       onClick={() => switchMode(btn.value)}
                       className={cn(
-                        'rounded-lg px-4 py-2 text-sm font-medium transition-all duration-200',
+                        'rounded-lg px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium transition-all duration-200',
                         mode === btn.value
                           ? cn('bg-background text-foreground shadow-sm', colors.text)
                           : 'text-muted-foreground hover:text-foreground'
@@ -507,7 +507,7 @@ export default function FocusPage() {
                   {isRunning && (
                     <motion.div
                       className={cn(
-                        'absolute h-72 w-72 rounded-full opacity-20',
+                        'absolute h-56 w-56 sm:h-72 sm:w-72 rounded-full opacity-20',
                         mode === 'pomodoro'
                           ? 'bg-emerald-500'
                           : mode === 'short-break'
@@ -527,10 +527,10 @@ export default function FocusPage() {
                   )}
 
                   <svg
-                    width="300"
-                    height="300"
+                    width="200"
+                    height="200"
                     viewBox="0 0 320 320"
-                    className="-rotate-90"
+                    className="-rotate-90 w-[200px] h-[200px] sm:w-[300px] sm:h-[300px]"
                   >
                     <defs>
                       <linearGradient
@@ -581,13 +581,13 @@ export default function FocusPage() {
                   <div className="absolute flex flex-col items-center gap-1">
                     <span
                       className={cn(
-                        'font-mono text-6xl font-bold tabular-nums tracking-tight',
+                        'font-mono text-5xl sm:text-6xl font-bold tabular-nums tracking-tight',
                         colors.text
                       )}
                     >
                       {formatTime(timeLeft)}
                     </span>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-xs sm:text-sm text-muted-foreground">
                       {MODE_LABELS[mode]}
                     </span>
                   </div>

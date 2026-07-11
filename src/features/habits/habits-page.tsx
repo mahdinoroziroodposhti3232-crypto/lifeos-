@@ -493,7 +493,7 @@ export default function HabitsPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-3">
           <AnimatePresence mode="popLayout">
             {habitsWithStats.map(({ habit, streak, completionRate, isTodayCompleted }, index) => (
               <motion.div
@@ -597,12 +597,12 @@ export default function HabitsPage() {
                               </span>
                               <button
                                 className={cn(
-                                  'h-2.5 w-2.5 rounded-full transition-all duration-200',
+                                  'h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full transition-all duration-200',
                                   isRecorded
                                     ? 'scale-100 shadow-sm'
                                     : 'scale-90 bg-muted-foreground/15 hover:bg-muted-foreground/25',
                                   isToday && !isRecorded && 'ring-2 ring-offset-1 ring-offset-background',
-                                  isToday && 'h-3 w-3'
+                                  isToday && 'h-2.5 w-2.5 sm:h-3 sm:w-3'
                                 )}
                                 style={
                                   isRecorded
@@ -686,7 +686,7 @@ export default function HabitsPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showAddDialog} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="sm:max-w-[460px]" dir="rtl">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto max-w-full sm:max-w-[460px]" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-right">
               {editingHabit ? 'ویرایش عادت' : 'عادت جدید'}

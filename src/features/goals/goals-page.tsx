@@ -440,7 +440,7 @@ export default function GoalsPage() {
   /* ---------------------------------------------------------------- */
 
   return (
-    <div className="flex flex-col gap-6 p-4 md:p-6 lg:p-8">
+    <div className="flex flex-col gap-4 sm:gap-6 p-3 sm:p-4 md:p-6 lg:p-8 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -493,7 +493,7 @@ export default function GoalsPage() {
           }}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2">
           <AnimatePresence mode="popLayout">
             {goalsWithProgress.map(({ goal, progress }, index) => {
               const isExpanded = expandedGoalId === goal.id;
@@ -679,7 +679,7 @@ export default function GoalsPage() {
                               </div>
 
                               {/* Milestones List */}
-                              <div className="space-y-1">
+                              <div className="space-y-1 max-h-[240px] overflow-y-auto">
                                 {(goal.milestones || []).map((milestone) => (
                                   <div
                                     key={milestone.id}
@@ -788,7 +788,7 @@ export default function GoalsPage() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showAddDialog} onOpenChange={(open) => { if (!open) closeDialog(); }}>
-        <DialogContent className="sm:max-w-[460px]" dir="rtl">
+        <DialogContent className="max-h-[90dvh] overflow-y-auto max-w-full sm:max-w-[460px]" dir="rtl">
           <DialogHeader>
             <DialogTitle className="text-right">
               {editingGoal ? 'ویرایش هدف' : 'هدف جدید'}

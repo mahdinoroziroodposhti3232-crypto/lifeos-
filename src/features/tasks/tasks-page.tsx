@@ -195,7 +195,7 @@ function SortableTaskItem({
 
   return (
     <div ref={setNodeRef} style={style} className="group">
-      <div className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/50">
+      <div className="flex items-start gap-3 rounded-lg border p-2.5 sm:p-3 transition-colors hover:bg-accent/50">
         {/* Drag handle */}
         <button
           type="button"
@@ -329,7 +329,7 @@ function KanbanTaskCard({
       exit={{ opacity: 0, scale: 0.95 }}
       transition={{ duration: 0.2 }}
     >
-      <div className="group rounded-lg border border-border/60 bg-card p-3 shadow-sm transition-all hover:shadow-md">
+      <div className="group rounded-lg border border-border/60 bg-card p-2.5 sm:p-3 shadow-sm transition-all hover:shadow-md">
         {/* Priority indicator */}
         <div
           className="absolute right-0 top-3 h-8 w-1 rounded-l-full"
@@ -633,7 +633,7 @@ function TaskDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg" dir="rtl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto max-w-full sm:max-w-lg" dir="rtl">
         <DialogHeader>
           <DialogTitle>
             {isEditing ? 'ویرایش وظیفه' : 'وظیفه جدید'}
@@ -995,7 +995,7 @@ export function TasksPage() {
   /*  Render                                                           */
   /* ================================================================ */
   return (
-    <div className="mx-auto max-w-7xl space-y-5">
+    <div className="mx-auto max-w-7xl space-y-4 sm:space-y-5 overflow-x-hidden">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

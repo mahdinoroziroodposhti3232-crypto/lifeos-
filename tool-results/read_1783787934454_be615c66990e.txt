@@ -1,0 +1,826 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useCallback } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Plus,
+     7→  ChevronRight,
+     8→  ChevronLeft,
+     9→  Trash2,
+    10→  Clock,
+    11→  CalendarDays,
+    12→  Calendar,
+    13→} from 'lucide-react';
+    14→import { useMutation, useQueryClient } from '@tanstack/react-query';
+    15→
+    16→import { useAppStore } from '@/lib/store';
+    17→import {
+    18→  toJalaali,
+    19→  toGregorian,
+    20→  getJalaaliMonthName,
+    21→  getJalaaliMonthDays,
+    22→  getJalaaliWeekDaysHeader,
+    23→  isTodayJalaali,
+    24→  type JalaaliDate,
+    25→} from '@/lib/jalali';
+    26→import { cn } from '@/lib/utils';
+    27→import {
+    28→  PRIORITY_COLORS,
+    29→  PRIORITY_LABELS,
+    30→  SHAMSI_WEEK_DAYS,
+    31→  type CalendarEvent,
+    32→  type Task,
+    33→} from '@/types';
+    34→
+    35→import {
+    36→  Card,
+    37→  CardContent,
+    38→  CardHeader,
+    39→  CardTitle,
+    40→} from '@/components/ui/card';
+    41→import { Button } from '@/components/ui/button';
+    42→import { Input } from '@/components/ui/input';
+    43→import { Checkbox } from '@/components/ui/checkbox';
+    44→import { Badge } from '@/components/ui/badge';
+    45→import { Separator } from '@/components/ui/separator';
+    46→import { ScrollArea } from '@/components/ui/scroll-area';
+    47→import { Textarea } from '@/components/ui/textarea';
+    48→import {
+    49→  Dialog,
+    50→  DialogContent,
+    51→  DialogHeader,
+    52→  DialogTitle,
+    53→  DialogFooter,
+    54→} from '@/components/ui/dialog';
+    55→
+    56→/* ------------------------------------------------------------------ */
+    57→/*  Constants                                                          */
+    58→/* ------------------------------------------------------------------ */
+    59→
+    60→const COLOR_PRESETS = [
+    61→  '#10b981',
+    62→  '#3b82f6',
+    63→  '#f59e0b',
+    64→  '#ef4444',
+    65→  '#8b5cf6',
+    66→  '#ec4899',
+    67→  '#06b6d4',
+    68→  '#f97316',
+    69→];
+    70→
+    71→/* ------------------------------------------------------------------ */
+    72→/*  Helpers                                                            */
+    73→/* ------------------------------------------------------------------ */
+    74→
+    75→function toPersianDigits(num: number): string {
+    76→  const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    77→  return num
+    78→    .toString()
+    79→    .split('')
+    80→    .map((ch) => (/\d/.test(ch) ? persianDigits[Number(ch)] : ch))
+    81→    .join('');
+    82→}
+    83→
+    84→function formatJalaaliDateKey(date: Date): string {
+    85→  const { jy, jm, jd } = toJalaali(date);
+    86→  return `${jy}/${jm}/${jd}`;
+    87→}
+    88→
+    89→function formatSelectedDateDisplay(jy: number, jm: number, jd: number): string {
+    90→  const monthName = getJalaaliMonthName(jm);
+    91→  const weekDayIndex = (() => {
+    92→    const greg = toGregorian(jy, jm, jd);
+    93→    const day = greg.getDay();
+    94→    return (day + 1) % 7;
+    95→  })();
+    96→  const weekDayName = SHAMSI_WEEK_DAYS[weekDayIndex];
+    97→  return `${toPersianDigits(jd)} ${monthName} ${toPersianDigits(jy)} — ${weekDayName}`;
+    98→}
+    99→
+   100→/* ------------------------------------------------------------------ */
+   101→/*  Calendar Day Cell                                                  */
+   102→/* ------------------------------------------------------------------ */
+   103→
+   104→interface DayCellProps {
+   105→  day: number;
+   106→  isCurrentMonth: boolean;
+   107→  isToday: boolean;
+   108→  isSelected: boolean;
+   109→  date: Date;
+   110→  eventDots: { color: string }[];
+   111→  taskDots: boolean;
+   112→  onClick: () => void;
+   113→}
+   114→
+   115→function DayCell({
+   116→  day,
+   117→  isCurrentMonth,
+   118→  isToday,
+   119→  isSelected,
+   120→  date,
+   121→  eventDots,
+   122→  taskDots,
+   123→  onClick,
+   124→}: DayCellProps) {
+   125→  return (
+   126→    <button
+   127→      type="button"
+   128→      onClick={onClick}
+   129→      className={cn(
+   130→        'relative flex h-full min-h-[72px] flex-col items-center gap-1 rounded-lg border border-transparent p-2 text-center transition-all duration-200 sm:min-h-[88px]',
+   131→        isCurrentMonth
+   132→          ? 'text-foreground hover:bg-accent/60'
+   133→          : 'text-muted-foreground/40 hover:bg-accent/30',
+   134→        isToday && !isSelected && 'ring-2 ring-primary/60 ring-offset-1 ring-offset-background',
+   135→        isSelected && 'bg-primary/10 border-primary/30 shadow-sm'
+   136→      )}
+   137→    >
+   138→      <span
+   139→        className={cn(
+   140→          'flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium transition-colors',
+   141→          isToday && !isSelected && 'bg-primary text-primary-foreground',
+   142→          isSelected && 'bg-primary/15 text-primary font-bold'
+   143→        )}
+   144→      >
+   145→        {toPersianDigits(day)}
+   146→      </span>
+   147→
+   148→      {/* Dot indicators */}
+   149→      <div className="flex items-center gap-0.5 flex-wrap justify-center mt-auto">
+   150→        {eventDots.slice(0, 3).map((dot, i) => (
+   151→          <span
+   152→            key={`ev-${i}`}
+   153→            className="h-1.5 w-1.5 rounded-full"
+   154→            style={{ backgroundColor: dot.color }}
+   155→          />
+   156→        ))}
+   157→        {taskDots && (
+   158→          <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
+   159→        )}
+   160→        {eventDots.length > 3 && (
+   161→          <span className="text-[8px] text-muted-foreground">
+   162→            +{toPersianDigits(eventDots.length - 3)}
+   163→          </span>
+   164→        )}
+   165→      </div>
+   166→    </button>
+   167→  );
+   168→}
+   169→
+   170→/* ------------------------------------------------------------------ */
+   171→/*  Selected Date Panel                                                */
+   172→/* ------------------------------------------------------------------ */
+   173→
+   174→function SelectedDatePanel({
+   175→  jy,
+   176→  jm,
+   177→  jd,
+   178→  events,
+   179→  tasks,
+   180→  onToggleTask,
+   181→  onDeleteEvent,
+   182→}: {
+   183→  jy: number;
+   184→  jm: number;
+   185→  jd: number;
+   186→  events: CalendarEvent[];
+   187→  tasks: Task[];
+   188→  onToggleTask: (task: Task) => void;
+   189→  onDeleteEvent: (eventId: string) => void;
+   190→}) {
+   191→  const dateDisplay = formatSelectedDateDisplay(jy, jm, jd);
+   192→
+   193→  return (
+   194→    <motion.div
+   195→      initial={{ opacity: 0, y: 10 }}
+   196→      animate={{ opacity: 1, y: 0 }}
+   197→      transition={{ duration: 0.25 }}
+   198→    >
+   199→      <Card className="h-full">
+   200→        <CardHeader className="pb-3">
+   201→          <CardTitle className="text-base">{dateDisplay}</CardTitle>
+   202→        </CardHeader>
+   203→        <CardContent className="space-y-4">
+   204→          {/* Events section */}
+   205→          <div>
+   206→            <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+   207→              <CalendarDays className="h-4 w-4 text-primary" />
+   208→              رویدادها
+   209→              {events.length > 0 && (
+   210→                <Badge variant="secondary" className="text-[10px] px-1.5">
+   211→                  {toPersianDigits(events.length)}
+   212→                </Badge>
+   213→              )}
+   214→            </h4>
+   215→            {events.length === 0 ? (
+   216→              <p className="py-4 text-center text-xs text-muted-foreground">
+   217→                رویدادی برای این روز وجود ندارد
+   218→              </p>
+   219→            ) : (
+   220→              <ScrollArea className="max-h-[240px]">
+   221→                <div className="space-y-2">
+   222→                  {events.map((event) => (
+   223→                    <div
+   224→                      key={event.id}
+   225→                      className="group flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/50"
+   226→                    >
+   227→                      <span
+   228→                        className="mt-1 h-3 w-3 shrink-0 rounded-full"
+   229→                        style={{ backgroundColor: event.color }}
+   230→                      />
+   231→                      <div className="min-w-0 flex-1">
+   232→                        <p className="text-sm font-medium leading-relaxed">
+   233→                          {event.title}
+   234→                        </p>
+   235→                        {event.description && (
+   236→                          <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">
+   237→                            {event.description}
+   238→                          </p>
+   239→                        )}
+   240→                        <div className="mt-1 flex items-center gap-2 text-[11px] text-muted-foreground">
+   241→                          {event.isAllDay ? (
+   242→                            <span className="flex items-center gap-1">
+   243→                              <Calendar className="h-3 w-3" />
+   244→                              تمام روز
+   245→                            </span>
+   246→                          ) : (
+   247→                            event.startTime && (
+   248→                              <span className="flex items-center gap-1">
+   249→                                <Clock className="h-3 w-3" />
+   250→                                {event.startTime}
+   251→                                {event.endTime ? ` — ${event.endTime}` : ''}
+   252→                              </span>
+   253→                            )
+   254→                          )}
+   255→                        </div>
+   256→                      </div>
+   257→                      <Button
+   258→                        variant="ghost"
+   259→                        size="icon"
+   260→                        className="h-7 w-7 shrink-0 opacity-0 transition-opacity group-hover:opacity-100 hover:text-destructive"
+   261→                        onClick={() => onDeleteEvent(event.id)}
+   262→                      >
+   263→                        <Trash2 className="h-3.5 w-3.5" />
+   264→                      </Button>
+   265→                    </div>
+   266→                  ))}
+   267→                </div>
+   268→              </ScrollArea>
+   269→            )}
+   270→          </div>
+   271→
+   272→          <Separator />
+   273→
+   274→          {/* Tasks due section */}
+   275→          <div>
+   276→            <h4 className="mb-2 flex items-center gap-2 text-sm font-semibold">
+   277→              <Calendar className="h-4 w-4 text-orange-500" />
+   278→              وظایف سررسید
+   279→              {tasks.length > 0 && (
+   280→                <Badge variant="secondary" className="text-[10px] px-1.5">
+   281→                  {toPersianDigits(tasks.length)}
+   282→                </Badge>
+   283→              )}
+   284→            </h4>
+   285→            {tasks.length === 0 ? (
+   286→              <p className="py-4 text-center text-xs text-muted-foreground">
+   287→                وظیفه‌ای برای این روز تعریف نشده است
+   288→              </p>
+   289→            ) : (
+   290→              <ScrollArea className="max-h-[240px]">
+   291→                <div className="space-y-2">
+   292→                  {tasks.map((task) => {
+   293→                    const isDone = task.status === 'done';
+   294→                    return (
+   295→                      <div
+   296→                        key={task.id}
+   297→                        className="flex items-start gap-3 rounded-lg border p-3 transition-colors hover:bg-accent/50"
+   298→                      >
+   299→                        <Checkbox
+   300→                          checked={isDone}
+   301→                          onCheckedChange={() => onToggleTask(task)}
+   302→                          className="mt-0.5"
+   303→                        />
+   304→                        <div className="min-w-0 flex-1">
+   305→                          <p
+   306→                            className={cn(
+   307→                              'text-sm font-medium leading-relaxed',
+   308→                              isDone && 'text-muted-foreground line-through'
+   309→                            )}
+   310→                          >
+   311→                            {task.title}
+   312→                          </p>
+   313→                          <div className="mt-1 flex items-center gap-2">
+   314→                            <Badge
+   315→                              variant="outline"
+   316→                              className="gap-1 text-[10px]"
+   317→                            >
+   318→                              <span
+   319→                                className="inline-block h-2 w-2 rounded-full"
+   320→                                style={{
+   321→                                  backgroundColor: PRIORITY_COLORS[task.priority],
+   322→                                }}
+   323→                              />
+   324→                              {PRIORITY_LABELS[task.priority]}
+   325→                            </Badge>
+   326→                          </div>
+   327→                        </div>
+   328→                      </div>
+   329→                    );
+   330→                  })}
+   331→                </div>
+   332→              </ScrollArea>
+   333→            )}
+   334→          </div>
+   335→        </CardContent>
+   336→      </Card>
+   337→    </motion.div>
+   338→  );
+   339→}
+   340→
+   341→/* ------------------------------------------------------------------ */
+   342→/*  Main Calendar Page                                                 */
+   343→/* ------------------------------------------------------------------ */
+   344→
+   345→export default function CalendarPage() {
+   346→  const { calendarEvents, tasks, settings, setSettings } = useAppStore();
+   347→  const queryClient = useQueryClient();
+   348→
+   349→  // Initialize current month/year from today
+   350→  const todayJalaali = useMemo(() => toJalaali(new Date()), []);
+   351→
+   352→  const [currentJalaaliYear, setCurrentJalaaliYear] = useState(todayJalaali.jy);
+   353→  const [currentJalaaliMonth, setCurrentJalaaliMonth] = useState(todayJalaali.jm);
+   354→  const [selectedDate, setSelectedDate] = useState<JalaaliDate | null>(todayJalaali);
+   355→  const [showAddEventDialog, setShowAddEventDialog] = useState(false);
+   356→
+   357→  const [newEvent, setNewEvent] = useState({
+   358→    title: '',
+   359→    description: '',
+   360→    date: '',
+   361→    startTime: '',
+   362→    endTime: '',
+   363→    isAllDay: true,
+   364→    color: COLOR_PRESETS[0],
+   365→  });
+   366→
+   367→  /* ---------- computed ---------- */
+   368→
+   369→  const monthName = getJalaaliMonthName(currentJalaaliMonth);
+   370→  const weekDayHeaders = getJalaaliWeekDaysHeader();
+   371→
+   372→  const calendarDays = useMemo(
+   373→    () => getJalaaliMonthDays(currentJalaaliYear, currentJalaaliMonth),
+   374→    [currentJalaaliYear, currentJalaaliMonth]
+   375→  );
+   376→
+   377→  // Build a map of dateKey -> events for quick lookup
+   378→  const eventsByDateKey = useMemo(() => {
+   379→    const map: Record<string, CalendarEvent[]> = {};
+   380→    for (const event of calendarEvents) {
+   381→      const key = event.date; // stored as jy/jm/jd
+   382→      if (!map[key]) map[key] = [];
+   383→      map[key].push(event);
+   384→    }
+   385→    return map;
+   386→  }, [calendarEvents]);
+   387→
+   388→  // Build a map of dateKey -> tasks due on that day
+   389→  const tasksByDateKey = useMemo(() => {
+   390→    const map: Record<string, Task[]> = {};
+   391→    for (const task of tasks) {
+   392→      if (task.dueDate && !task.isArchived) {
+   393→        const d = new Date(task.dueDate);
+   394→        const key = formatJalaaliDateKey(d);
+   395→        if (!map[key]) map[key] = [];
+   396→        map[key].push(task);
+   397→      }
+   398→    }
+   399→    return map;
+   400→  }, [tasks]);
+   401→
+   402→  // Selected date events and tasks
+   403→  const selectedDateEvents = useMemo(() => {
+   404→    if (!selectedDate) return [];
+   405→    const key = `${selectedDate.jy}/${selectedDate.jm}/${selectedDate.jd}`;
+   406→    return eventsByDateKey[key] || [];
+   407→  }, [selectedDate, eventsByDateKey]);
+   408→
+   409→  const selectedDateTasks = useMemo(() => {
+   410→    if (!selectedDate) return [];
+   411→    const key = `${selectedDate.jy}/${selectedDate.jm}/${selectedDate.jd}`;
+   412→    return tasksByDateKey[key] || [];
+   413→  }, [selectedDate, tasksByDateKey]);
+   414→
+   415→  /* ---------- mutations ---------- */
+   416→
+   417→  const createEventMutation = useMutation({
+   418→    mutationFn: async (data: Record<string, unknown>) => {
+   419→      const res = await fetch('/api/calendar-events', {
+   420→        method: 'POST',
+   421→        headers: { 'Content-Type': 'application/json' },
+   422→        body: JSON.stringify(data),
+   423→      });
+   424→      if (!res.ok) throw new Error('خطا در ایجاد رویداد');
+   425→      return res.json();
+   426→    },
+   427→    onSuccess: () => {
+   428→      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+   429→      setShowAddEventDialog(false);
+   430→      setNewEvent({
+   431→        title: '',
+   432→        description: '',
+   433→        date: '',
+   434→        startTime: '',
+   435→        endTime: '',
+   436→        isAllDay: true,
+   437→        color: COLOR_PRESETS[0],
+   438→      });
+   439→    },
+   440→  });
+   441→
+   442→  const deleteEventMutation = useMutation({
+   443→    mutationFn: async (id: string) => {
+   444→      const res = await fetch(`/api/calendar-events?id=${id}`, {
+   445→        method: 'DELETE',
+   446→      });
+   447→      if (!res.ok) throw new Error('خطا در حذف رویداد');
+   448→      return res.json();
+   449→    },
+   450→    onSuccess: () => {
+   451→      queryClient.invalidateQueries({ queryKey: ['calendar-events'] });
+   452→    },
+   453→  });
+   454→
+   455→  const toggleTaskDoneMutation = useMutation({
+   456→    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+   457→      const res = await fetch('/api/tasks', {
+   458→        method: 'PUT',
+   459→        headers: { 'Content-Type': 'application/json' },
+   460→        body: JSON.stringify({ id, status }),
+   461→      });
+   462→      return res.json();
+   463→    },
+   464→    onSuccess: () => {
+   465→      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+   466→    },
+   467→  });
+   468→
+   469→  /* ---------- handlers ---------- */
+   470→
+   471→  const handlePrevMonth = useCallback(() => {
+   472→    if (currentJalaaliMonth === 1) {
+   473→      setCurrentJalaaliMonth(12);
+   474→      setCurrentJalaaliYear((y) => y - 1);
+   475→    } else {
+   476→      setCurrentJalaaliMonth((m) => m - 1);
+   477→    }
+   478→  }, [currentJalaaliMonth]);
+   479→
+   480→  const handleNextMonth = useCallback(() => {
+   481→    if (currentJalaaliMonth === 12) {
+   482→      setCurrentJalaaliMonth(1);
+   483→      setCurrentJalaaliYear((y) => y + 1);
+   484→    } else {
+   485→      setCurrentJalaaliMonth((m) => m + 1);
+   486→    }
+   487→  }, [currentJalaaliMonth]);
+   488→
+   489→  const handleDayClick = useCallback(
+   490→    (cell: { day: number; isCurrentMonth: boolean; date: Date }) => {
+   491→      const j = toJalaali(cell.date);
+   492→      setSelectedDate(j);
+   493→
+   494→      // If clicking on a previous/next month day, navigate to that month
+   495→      if (!cell.isCurrentMonth) {
+   496→        setCurrentJalaaliMonth(j.jm);
+   497→        setCurrentJalaaliYear(j.jy);
+   498→      }
+   499→    },
+   500→    []
+   501→  );
+   502→
+   503→  const handleToggleCalendarType = useCallback(() => {
+   504→    const next = settings.calendarType === 'shamsi' ? 'miladi' : 'shamsi';
+   505→    setSettings({ calendarType: next });
+   506→  }, [settings.calendarType, setSettings]);
+   507→
+   508→  const handleOpenAddEvent = useCallback(() => {
+   509→    if (selectedDate) {
+   510→      setNewEvent((prev) => ({
+   511→        ...prev,
+   512→        date: `${selectedDate.jy}/${selectedDate.jm}/${selectedDate.jd}`,
+   513→      }));
+   514→    }
+   515→    setShowAddEventDialog(true);
+   516→  }, [selectedDate]);
+   517→
+   518→  const handleSubmitEvent = (e: React.FormEvent) => {
+   519→    e.preventDefault();
+   520→    if (!newEvent.title.trim() || !newEvent.date) return;
+   521→
+   522→    createEventMutation.mutate({
+   523→      title: newEvent.title.trim(),
+   524→      description: newEvent.description.trim() || null,
+   525→      date: newEvent.date,
+   526→      startTime: newEvent.isAllDay ? null : (newEvent.startTime || null),
+   527→      endTime: newEvent.isAllDay ? null : (newEvent.endTime || null),
+   528→      isAllDay: newEvent.isAllDay,
+   529→      color: newEvent.color,
+   530→    });
+   531→  };
+   532→
+   533→  const handleDeleteEvent = useCallback(
+   534→    (eventId: string) => {
+   535→      deleteEventMutation.mutate(eventId);
+   536→    },
+   537→    [deleteEventMutation]
+   538→  );
+   539→
+   540→  const handleToggleTask = useCallback(
+   541→    (task: Task) => {
+   542→      const newStatus = task.status === 'done' ? 'todo' : 'done';
+   543→      toggleTaskDoneMutation.mutate({ id: task.id, status: newStatus });
+   544→    },
+   545→    [toggleTaskDoneMutation]
+   546→  );
+   547→
+   548→  /* ---------- render ---------- */
+   549→
+   550→  return (
+   551→    <motion.div
+   552→      initial={{ opacity: 0, y: 12 }}
+   553→      animate={{ opacity: 1, y: 0 }}
+   554→      transition={{ duration: 0.35, ease: 'easeOut' }}
+   555→      className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 space-y-6"
+   556→    >
+   557→      {/* Header */}
+   558→      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+   559→        <div>
+   560→          <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+   561→            تقویم
+   562→          </h1>
+   563→        </div>
+   564→        <div className="flex items-center gap-2">
+   565→          {/* Calendar type toggle */}
+   566→          <Button
+   567→            variant="outline"
+   568→            size="sm"
+   569→            onClick={handleToggleCalendarType}
+   570→            className="gap-1.5 text-xs"
+   571→          >
+   572→            {settings.calendarType === 'shamsi' ? 'شمسی' : 'میلادی'}
+   573→          </Button>
+   574→          <Button
+   575→            size="sm"
+   576→            onClick={handleOpenAddEvent}
+   577→            className="gap-1.5"
+   578→          >
+   579→            <Plus className="h-4 w-4" />
+   580→            رویداد
+   581→          </Button>
+   582→        </div>
+   583→      </div>
+   584→
+   585→      {/* Month Navigation */}
+   586→      <div className="flex items-center justify-between rounded-xl border bg-card p-3">
+   587→        <Button
+   588→          variant="ghost"
+   589→          size="icon"
+   590→          onClick={handlePrevMonth}
+   591→          className="h-9 w-9"
+   592→        >
+   593→          <ChevronRight className="h-5 w-5" />
+   594→        </Button>
+   595→        <div className="flex items-center gap-3">
+   596→          <h2 className="text-lg font-bold">
+   597→            {monthName} {toPersianDigits(currentJalaaliYear)}
+   598→          </h2>
+   599→        </div>
+   600→        <Button
+   601→          variant="ghost"
+   602→          size="icon"
+   603→          onClick={handleNextMonth}
+   604→          className="h-9 w-9"
+   605→        >
+   606→          <ChevronLeft className="h-5 w-5" />
+   607→        </Button>
+   608→      </div>
+   609→
+   610→      {/* Main content: Calendar grid + Selected date panel */}
+   611→      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+   612→        {/* Calendar Grid */}
+   613→        <Card className="overflow-hidden py-0">
+   614→          {/* Week day headers */}
+   615→          <div className="grid grid-cols-7 border-b bg-muted/30">
+   616→            {weekDayHeaders.map((day, i) => (
+   617→              <div
+   618→                key={i}
+   619→                className="flex items-center justify-center py-2.5 text-xs font-semibold text-muted-foreground"
+   620→              >
+   621→                {day}
+   622→              </div>
+   623→            ))}
+   624→          </div>
+   625→
+   626→          {/* Day cells */}
+   627→          <div className="grid grid-cols-7">
+   628→            {calendarDays.map((cell, idx) => {
+   629→              const dateKey = formatJalaaliDateKey(cell.date);
+   630→              const dayEvents = eventsByDateKey[dateKey] || [];
+   631→              const dayTasks = tasksByDateKey[dateKey] || [];
+   632→              const hasTasks = dayTasks.length > 0;
+   633→
+   634→              const eventDots = dayEvents.map((ev) => ({ color: ev.color }));
+   635→
+   636→              const isSelected =
+   637→                selectedDate !== null &&
+   638→                toJalaali(cell.date).jy === selectedDate.jy &&
+   639→                toJalaali(cell.date).jm === selectedDate.jm &&
+   640→                toJalaali(cell.date).jd === selectedDate.jd;
+   641→
+   642→              return (
+   643→                <div
+   644→                  key={idx}
+   645→                  className={cn(
+   646→                    'border-b border-l last:border-l-0',
+   647→                    // Remove bottom border on last row
+   648→                    idx >= 35 && 'border-b-0'
+   649→                  )}
+   650→                >
+   651→                  <DayCell
+   652→                    day={cell.day}
+   653→                    isCurrentMonth={cell.isCurrentMonth}
+   654→                    isToday={cell.isToday}
+   655→                    isSelected={isSelected}
+   656→                    date={cell.date}
+   657→                    eventDots={eventDots}
+   658→                    taskDots={hasTasks}
+   659→                    onClick={() => handleDayClick(cell)}
+   660→                  />
+   661→                </div>
+   662→              );
+   663→            })}
+   664→          </div>
+   665→        </Card>
+   666→
+   667→        {/* Selected Date Panel */}
+   668→        <div className="lg:sticky lg:top-6 lg:self-start">
+   669→          {selectedDate ? (
+   670→            <SelectedDatePanel
+   671→              jy={selectedDate.jy}
+   672→              jm={selectedDate.jm}
+   673→              jd={selectedDate.jd}
+   674→              events={selectedDateEvents}
+   675→              tasks={selectedDateTasks}
+   676→              onToggleTask={handleToggleTask}
+   677→              onDeleteEvent={handleDeleteEvent}
+   678→            />
+   679→          ) : (
+   680→            <Card className="flex h-64 items-center justify-center">
+   681→              <p className="text-sm text-muted-foreground">
+   682→                یک روز را از تقویم انتخاب کنید
+   683→              </p>
+   684→            </Card>
+   685→          )}
+   686→        </div>
+   687→      </div>
+   688→
+   689→      {/* Add Event Dialog */}
+   690→      <Dialog open={showAddEventDialog} onOpenChange={setShowAddEventDialog}>
+   691→        <DialogContent className="sm:max-w-md">
+   692→          <DialogHeader>
+   693→            <DialogTitle>رویداد جدید</DialogTitle>
+   694→          </DialogHeader>
+   695→          <form onSubmit={handleSubmitEvent} className="space-y-4">
+   696→            <div className="space-y-2">
+   697→              <label className="text-sm font-medium">عنوان رویداد *</label>
+   698→              <Input
+   699→                value={newEvent.title}
+   700→                onChange={(e) =>
+   701→                  setNewEvent((p) => ({ ...p, title: e.target.value }))
+   702→                }
+   703→                placeholder="مثلاً: جلسه تیم"
+   704→                autoFocus
+   705→              />
+   706→            </div>
+   707→
+   708→            <div className="space-y-2">
+   709→              <label className="text-sm font-medium">تاریخ</label>
+   710→              <Input
+   711→                value={newEvent.date}
+   712→                onChange={(e) =>
+   713→                  setNewEvent((p) => ({ ...p, date: e.target.value }))
+   714→                }
+   715→                placeholder="۱۴۰۵/۴/۱۵"
+   716→                readOnly
+   717→                className="bg-muted/50"
+   718→              />
+   719→              <p className="text-[11px] text-muted-foreground">
+   720→                تاریخ بر اساس روز انتخاب‌شده در تقویم تنظیم شده است
+   721→              </p>
+   722→            </div>
+   723→
+   724→            <div className="flex items-center gap-2">
+   725→              <Checkbox
+   726→                id="all-day-check"
+   727→                checked={newEvent.isAllDay}
+   728→                onCheckedChange={(checked) =>
+   729→                  setNewEvent((p) => ({ ...p, isAllDay: !!checked }))
+   730→                }
+   731→              />
+   732→              <label
+   733→                htmlFor="all-day-check"
+   734→                className="cursor-pointer text-sm font-medium"
+   735→              >
+   736→                تمام روز
+   737→              </label>
+   738→            </div>
+   739→
+   740→            {!newEvent.isAllDay && (
+   741→              <div className="grid grid-cols-2 gap-3">
+   742→                <div className="space-y-2">
+   743→                  <label className="text-sm font-medium">ساعت شروع</label>
+   744→                  <Input
+   745→                    type="time"
+   746→                    value={newEvent.startTime}
+   747→                    onChange={(e) =>
+   748→                      setNewEvent((p) => ({ ...p, startTime: e.target.value }))
+   749→                    }
+   750→                  />
+   751→                </div>
+   752→                <div className="space-y-2">
+   753→                  <label className="text-sm font-medium">ساعت پایان</label>
+   754→                  <Input
+   755→                    type="time"
+   756→                    value={newEvent.endTime}
+   757→                    onChange={(e) =>
+   758→                      setNewEvent((p) => ({ ...p, endTime: e.target.value }))
+   759→                    }
+   760→                  />
+   761→                </div>
+   762→              </div>
+   763→            )}
+   764→
+   765→            <div className="space-y-2">
+   766→              <label className="text-sm font-medium">رنگ</label>
+   767→              <div className="flex flex-wrap gap-2.5">
+   768→                {COLOR_PRESETS.map((color) => (
+   769→                  <button
+   770→                    key={color}
+   771→                    type="button"
+   772→                    onClick={() =>
+   773→                      setNewEvent((p) => ({ ...p, color }))
+   774→                    }
+   775→                    className={cn(
+   776→                      'h-8 w-8 rounded-full transition-all duration-200',
+   777→                      newEvent.color === color
+   778→                        ? 'ring-2 ring-offset-2 ring-offset-background scale-110'
+   779→                        : 'hover:scale-110'
+   780→                    )}
+   781→                    style={{
+   782→                      backgroundColor: color,
+   783→                      ...(newEvent.color === color ? { ringColor: color } : {}),
+   784→                    }}
+   785→                  />
+   786→                ))}
+   787→              </div>
+   788→            </div>
+   789→
+   790→            <div className="space-y-2">
+   791→              <label className="text-sm font-medium">توضیحات</label>
+   792→              <Textarea
+   793→                value={newEvent.description}
+   794→                onChange={(e) =>
+   795→                  setNewEvent((p) => ({ ...p, description: e.target.value }))
+   796→                }
+   797→                placeholder="توضیحات اختیاری درباره رویداد"
+   798→                rows={3}
+   799→              />
+   800→            </div>
+   801→
+   802→            <DialogFooter className="gap-2 pt-2">
+   803→              <Button
+   804→                type="button"
+   805→                variant="outline"
+   806→                onClick={() => setShowAddEventDialog(false)}
+   807→              >
+   808→                انصراف
+   809→              </Button>
+   810→              <Button
+   811→                type="submit"
+   812→                disabled={
+   813→                  !newEvent.title.trim() ||
+   814→                  !newEvent.date ||
+   815→                  createEventMutation.isPending
+   816→                }
+   817→              >
+   818→                {createEventMutation.isPending ? 'در حال ایجاد...' : 'ایجاد رویداد'}
+   819→              </Button>
+   820→            </DialogFooter>
+   821→          </form>
+   822→        </DialogContent>
+   823→      </Dialog>
+   824→    </motion.div>
+   825→  );
+   826→}

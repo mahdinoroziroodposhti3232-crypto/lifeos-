@@ -91,7 +91,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         )}
       >
         <Topbar />
-        <main className="flex-1 overflow-y-auto p-4 md:p-6 scrollbar-thin">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden p-3 sm:p-4 md:p-6 pb-20 md:pb-6 scrollbar-thin">
           {children}
         </main>
       </div>

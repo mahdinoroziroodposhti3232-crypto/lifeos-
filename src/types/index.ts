@@ -210,3 +210,17 @@ export const SHAMSI_WEEK_DAYS = [
 export const MILADI_WEEK_DAYS_SHORT = [
   'ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'
 ];
+
+export interface Notification {
+  id: string;
+  title: string;
+  body: string;
+  type: 'info' | 'success' | 'warning' | 'error' | 'reminder';
+  read: boolean;
+  actionUrl?: string;
+  entityId?: string;
+  entityType?: string;
+  dueAt?: string;
+  createdAt: string;
+  userId: string;
+}

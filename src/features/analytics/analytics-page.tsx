@@ -264,8 +264,8 @@ export default function AnalyticsPage() {
 
   /* ---- render ---- */
   return (
-    <div className="h-full overflow-y-auto pb-8" dir="rtl">
-      <div className="mx-auto max-w-6xl space-y-8 px-4 pt-8">
+    <div className="h-full overflow-y-auto overflow-x-hidden pb-8" dir="rtl">
+      <div className="mx-auto max-w-6xl space-y-6 sm:space-y-8 px-3 sm:px-4 pt-6 sm:pt-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -311,16 +311,16 @@ export default function AnalyticsPage() {
             className="space-y-6"
           >
             {/* Stats Overview */}
-            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+            <motion.div variants={itemVariants} className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
               <Card>
-                <CardContent className="flex flex-col gap-2 p-5">
+                <CardContent className="flex flex-col gap-2 p-3 sm:p-5">
                   <div className="flex items-center justify-between">
                     <TrendingUp className="h-5 w-5 text-amber-500" />
                     <Badge variant="secondary" className="text-[10px]">
                       امتیاز
                     </Badge>
                   </div>
-                  <div className="text-3xl font-bold tabular-nums">
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums">
                     {toPersianDigits(productivityScore)}
                   </div>
                   <p className="text-xs text-muted-foreground">امتیاز بهره‌وری</p>
@@ -328,14 +328,14 @@ export default function AnalyticsPage() {
               </Card>
 
               <Card>
-                <CardContent className="flex flex-col gap-2 p-5">
+                <CardContent className="flex flex-col gap-2 p-3 sm:p-5">
                   <div className="flex items-center justify-between">
                     <CheckCircle2 className="h-5 w-5 text-emerald-500" />
                     <Badge variant="secondary" className="text-[10px]">
                       وظیفه
                     </Badge>
                   </div>
-                  <div className="text-3xl font-bold tabular-nums">
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums">
                     {toPersianDigits(doneTasks.length)}
                   </div>
                   <p className="text-xs text-muted-foreground">وظایف انجام شده</p>
@@ -343,14 +343,14 @@ export default function AnalyticsPage() {
               </Card>
 
               <Card>
-                <CardContent className="flex flex-col gap-2 p-5">
+                <CardContent className="flex flex-col gap-2 p-3 sm:p-5">
                   <div className="flex items-center justify-between">
                     <Clock className="h-5 w-5 text-blue-500" />
                     <Badge variant="secondary" className="text-[10px]">
                       زمان
                     </Badge>
                   </div>
-                  <div className="text-2xl font-bold tabular-nums leading-9">
+                  <div className="text-xl sm:text-2xl font-bold tabular-nums leading-9">
                     {formatMinutes(totalFocusMinutes)}
                   </div>
                   <p className="text-xs text-muted-foreground">زمان تمرکز</p>
@@ -358,14 +358,14 @@ export default function AnalyticsPage() {
               </Card>
 
               <Card>
-                <CardContent className="flex flex-col gap-2 p-5">
+                <CardContent className="flex flex-col gap-2 p-3 sm:p-5">
                   <div className="flex items-center justify-between">
                     <BarChart3 className="h-5 w-5 text-purple-500" />
                     <Badge variant="secondary" className="text-[10px]">
                       درصد
                     </Badge>
                   </div>
-                  <div className="text-3xl font-bold tabular-nums">
+                  <div className="text-2xl sm:text-3xl font-bold tabular-nums">
                     {toPersianDigits(completionRate)}
                     <span className="mr-0.5 text-lg text-muted-foreground">٪</span>
                   </div>
@@ -375,16 +375,16 @@ export default function AnalyticsPage() {
             </motion.div>
 
             {/* Charts Row 1 */}
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
               {/* Chart 1: Task Completion Trend */}
               <motion.div variants={itemVariants}>
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">روند انجام وظایف</CardTitle>
+                  <CardHeader className="pb-2 px-4 sm:px-6">
+                    <CardTitle className="text-sm sm:text-base">روند انجام وظایف</CardTitle>
                     <CardDescription>۷ روز اخیر</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[260px]">
+                    <div className="h-[180px] sm:h-[260px]">
                       <ResponsiveContainer width="100%" height="100%">
                         <BarChart data={taskTrendData} barSize={28}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border)" />
@@ -424,11 +424,11 @@ export default function AnalyticsPage() {
                   </CardHeader>
                   <CardContent>
                     {focusDistributionData.length === 0 ? (
-                      <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                      <div className="flex h-[180px] sm:h-[260px] items-center justify-center text-sm text-muted-foreground">
                         داده‌ای موجود نیست
                       </div>
                     ) : (
-                      <div className="h-[260px]">
+                      <div className="h-[180px] sm:h-[260px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                             <Pie
@@ -477,21 +477,21 @@ export default function AnalyticsPage() {
             </div>
 
             {/* Charts Row 2 */}
-            <div className="grid gap-6 lg:grid-cols-2">
+            <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
               {/* Chart 3: Tasks by Priority */}
               <motion.div variants={itemVariants}>
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base">وظایف بر اساس اولویت</CardTitle>
+                  <CardHeader className="pb-2 px-4 sm:px-6">
+                    <CardTitle className="text-sm sm:text-base">وظایف بر اساس اولویت</CardTitle>
                     <CardDescription>توزیع اولویت‌ها</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {priorityData.length === 0 ? (
-                      <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                      <div className="flex h-[180px] sm:h-[260px] items-center justify-center text-sm text-muted-foreground">
                         داده‌ای موجود نیست
                       </div>
                     ) : (
-                      <div className="h-[260px]">
+                      <div className="h-[180px] sm:h-[260px]">
                         <ResponsiveContainer width="100%" height="100%">
                           <BarChart
                             data={priorityData}
@@ -537,7 +537,7 @@ export default function AnalyticsPage() {
                   </CardHeader>
                   <CardContent>
                     {habits.length === 0 ? (
-                      <div className="flex h-[260px] items-center justify-center text-sm text-muted-foreground">
+                      <div className="flex h-[180px] sm:h-[260px] items-center justify-center text-sm text-muted-foreground">
                         عادتی ثبت نشده
                       </div>
                     ) : (
@@ -547,19 +547,19 @@ export default function AnalyticsPage() {
                           {['ش', 'ی', 'د', 'س', 'چ', 'پ', 'ج'].map((d) => (
                             <div
                               key={d}
-                              className="flex h-5 w-8 items-center justify-center text-[10px] text-muted-foreground"
+                              className="flex h-5 w-5 sm:h-8 sm:w-8 items-center justify-center text-[10px] text-muted-foreground"
                             >
                               {d}
                             </div>
                           ))}
                         </div>
                         {/* Cells - 4 rows of 7 */}
-                        <div className="grid grid-cols-7 gap-1.5">
+                        <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
                           {heatmapData.map((cell, i) => (
                             <div
                               key={i}
                               className={cn(
-                                'group relative h-8 w-8 rounded-md transition-all hover:scale-110',
+                                'group relative h-6 w-6 sm:h-8 sm:w-8 rounded-md transition-all hover:scale-110',
                                 getHeatmapColor(cell.rate)
                               )}
                               title={`${cell.dateStr} — ${toPersianDigits(cell.completed)}/${toPersianDigits(cell.total)}`}

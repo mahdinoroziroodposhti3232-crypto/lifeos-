@@ -127,7 +127,7 @@ function DayCell({
       type="button"
       onClick={onClick}
       className={cn(
-        'relative flex h-full min-h-[72px] flex-col items-center gap-1 rounded-lg border border-transparent p-2 text-center transition-all duration-200 sm:min-h-[88px]',
+        'relative flex h-full min-h-[56px] sm:min-h-[72px] flex-col items-center gap-1 rounded-lg border border-transparent p-1.5 sm:p-2 text-center transition-all duration-200',
         isCurrentMonth
           ? 'text-foreground hover:bg-accent/60'
           : 'text-muted-foreground/40 hover:bg-accent/30',
@@ -137,7 +137,7 @@ function DayCell({
     >
       <span
         className={cn(
-          'flex h-7 w-7 items-center justify-center rounded-full text-sm font-medium transition-colors',
+          'flex h-6 w-6 sm:h-7 sm:w-7 items-center justify-center rounded-full text-sm font-medium transition-colors',
           isToday && !isSelected && 'bg-primary text-primary-foreground',
           isSelected && 'bg-primary/15 text-primary font-bold'
         )}
@@ -147,7 +147,7 @@ function DayCell({
 
       {/* Dot indicators */}
       <div className="flex items-center gap-0.5 flex-wrap justify-center mt-auto">
-        {eventDots.slice(0, 3).map((dot, i) => (
+        {eventDots.slice(0, 2).map((dot, i) => (
           <span
             key={`ev-${i}`}
             className="h-1.5 w-1.5 rounded-full"
@@ -157,9 +157,9 @@ function DayCell({
         {taskDots && (
           <span className="h-1.5 w-1.5 rounded-full bg-orange-400" />
         )}
-        {eventDots.length > 3 && (
+        {eventDots.length > 2 && (
           <span className="text-[8px] text-muted-foreground">
-            +{toPersianDigits(eventDots.length - 3)}
+            +{toPersianDigits(eventDots.length - 2)}
           </span>
         )}
       </div>
@@ -552,7 +552,7 @@ export default function CalendarPage() {
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: 'easeOut' }}
-      className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 space-y-6"
+      className="mx-auto w-full max-w-7xl px-3 sm:px-4 md:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 overflow-x-hidden"
     >
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -608,11 +608,11 @@ export default function CalendarPage() {
       </div>
 
       {/* Main content: Calendar grid + Selected date panel */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-[1fr_320px]">
         {/* Calendar Grid */}
         <Card className="overflow-hidden py-0">
           {/* Week day headers */}
-          <div className="grid grid-cols-7 border-b bg-muted/30">
+          <div className="grid grid-cols-7 border-b bg-muted/30 [&,>*]:min-h-[40px] sm:[&,>*]:min-h-[48px]">
             {weekDayHeaders.map((day, i) => (
               <div
                 key={i}

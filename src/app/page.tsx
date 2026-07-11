@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { SessionProvider, useSession } from 'next-auth/react';
 import { AppShell } from '@/components/layout/app-shell';
 import { useAppStore } from '@/lib/store';
 import type { PageType } from '@/types';
@@ -15,6 +16,7 @@ import NotesPage from '@/features/notes/notes-page';
 import AnalyticsPage from '@/features/analytics/analytics-page';
 import SettingsPage from '@/features/settings/settings-page';
 import AIPage from '@/features/ai-assistant/ai-page';
+import { AuthPage } from '@/features/auth/auth-page';
 import { Loader2 } from 'lucide-react';
 
 function PageRouter() {
@@ -42,7 +44,40 @@ function PageRouter() {
   );
 }
 
-export default function Home() {
+function LoadingScreen() {
+  return (
+    <div className="flex h-screen items-center justify-center bg-background" dir="rtl">
+      <div className="flex flex-col items-center gap-4">
+        <div className="relative">
+          <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+            <span className="text-3xl">✦</span>
+          </div>
+          <div className="absolute -bottom-1 -left-1 h-16 w-16 rounded-2xl bg-primary/5 animate-ping" />
+        </div>
+        <div className="flex items-center gap-3">
+          <Loader2 className="h-5 w-5 animate-spin text-primary" />
+          <span className="text-lg font-medium text-muted-foreground">در حال بارگذاری لایف‌او‌اس...</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AuthGate({ children }: { children: React.ReactNode }) {
+  const { data: session, status } = useSession();
+
+  if (status === 'loading') {
+    return <LoadingScreen />;
+  }
+
+  if (!session) {
+    return <AuthPage />;
+  }
+
+  return <>{children}</>;
+}
+
+function AppContent() {
   const [isSeeded, setIsSeeded] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
 
@@ -69,27 +104,22 @@ export default function Home() {
   }, []);
 
   if (isInitializing) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background" dir="rtl">
-        <div className="flex flex-col items-center gap-4">
-          <div className="relative">
-            <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-              <span className="text-3xl">✦</span>
-            </div>
-            <div className="absolute -bottom-1 -left-1 h-16 w-16 rounded-2xl bg-primary/5 animate-ping" />
-          </div>
-          <div className="flex items-center gap-3">
-            <Loader2 className="h-5 w-5 animate-spin text-primary" />
-            <span className="text-lg font-medium text-muted-foreground">در حال بارگذاری لایف‌او‌اس...</span>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
     <AppShell>
       <PageRouter />
     </AppShell>
+  );
+}
+
+export default function Home() {
+  return (
+    <SessionProvider>
+      <AuthGate>
+        <AppContent />
+      </AuthGate>
+    </SessionProvider>
   );
 }

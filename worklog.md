@@ -1,45 +1,31 @@
 ---
-Task ID: 1
-Agent: Main Agent
-Task: Build complete Persian LifeOS application (Phase 1)
+Task ID: 3
+Agent: Main Agent (Phase 3 - 5 New Features + Mobile)
+Task: Implement Auth, AI, Notifications, Multi-user, Mobile Responsiveness
 
 Work Log:
-- Designed and pushed Prisma database schema with 18 models (User, Project, Task, Label, Goal, Milestone, Habit, HabitRecord, Note, CalendarEvent, FocusSession, UserSetting, DashboardLayout)
-- Downloaded and installed Vazirmatn Persian font (4 weights: 300, 400, 500, 700)
-- Created custom RTL Design System with emerald/teal primary color, oklch color system, dark/light mode support
-- Built complete layout system: Sidebar (collapsible, animated), Topbar, AppShell, Command Palette (Ctrl+K), Empty State
-- Created Zustand store with all state management (navigation, data, settings, sidebar)
-- Built Jalali/Shamsi calendar utility library (toJalaali, toGregorian, formatJalaaliDate, getJalaaliMonthDays, etc.)
-- Created 10 API route modules (tasks, projects, labels, goals, habits, habits/records, notes, calendar-events, focus-sessions, seed)
-- Built 11 feature pages: Dashboard, Tasks (Kanban+List), Projects, Calendar (Shamsi), Habits, Goals, Focus (Pomodoro), Notes, Analytics, Settings, AI Assistant
-- Wired up SPA routing in page.tsx with QueryProvider and auto-seed
-- Fixed multiple API/schema mismatches (focus-sessions, calendar-events, habits/records, labels)
-- Verified all 11 pages work correctly via Agent Browser
+- Verified all Phase 1 & 2 files intact (11 feature pages, 10 API routes, layout components)
+- Added `password` field to User model and `Notification` model to Prisma schema
+- Pushed schema with force-reset and regenerated Prisma client
+- Installed bcryptjs for password hashing
+- Created NextAuth configuration (src/lib/auth.ts) with Credentials provider
+- Created NextAuth route handler (src/app/api/auth/[...nextauth]/route.ts)
+- Created registration API (src/app/api/auth/register/route.ts)
+- Created session API (src/app/api/auth/session/route.ts)
+- Created premium RTL auth page (src/features/auth/auth-page.tsx) with login/register tabs
+- Updated page.tsx with SessionProvider and AuthGate
+- Created AI chat API (src/app/api/ai/chat/route.ts) using z-ai-web-dev-sdk
+- Updated AI page to call real API instead of mock responses
+- Created notifications API (src/app/api/notifications/route.ts) with GET/POST/PUT/DELETE
+- Updated topbar with notification bell, badge, popover dropdown, 30s polling
+- Updated all 10 API routes for multi-user support with session-based auth
+- Updated seed route to work without auth and create demo users
+- Applied mobile responsiveness improvements to: dashboard, analytics, calendar, focus timer, topbar
 
 Stage Summary:
-- Complete Persian LifeOS SPA with RTL layout, Shamsi calendar, dark/light mode
-- All 11 modules functional: Dashboard, Tasks, Projects, Calendar, Habits, Goals, Focus, Notes, Analytics, Settings, AI Assistant
-- Database seeded with 15 tasks, 3 projects, 5 labels, 3 goals, 4 habits, 5 notes, 12 focus sessions, 5 calendar events
-- Screenshots saved to /home/z/my-project/download/
-
----
-Task ID: 2
-Agent: Main Agent (Phase 2 - Verification & Optimization)
-Task: Verify all subagent-created files, fix bugs, optimize, and prepare for production
-
-Work Log:
-- Verified all 11 feature pages exist and are complete (dashboard, tasks, calendar, habits, goals, focus, notes, analytics, settings, AI assistant, projects)
-- Verified all 10 API routes exist and return correct data
-- Verified layout components (sidebar, topbar, app-shell, command-palette, empty-state)
-- Verified page.tsx wiring with auto-seed and SPA routing
-- Production build: Compiled successfully with 0 errors, 14 pages generated
-- Tested all API endpoints in production mode: tasks (15), projects (3), goals (3), habits (4), notes (5)
-- Fixed bug: notes-page.tsx handleTogglePin was using selectedNoteId instead of the note being clicked in the list
-- Fixed bug: Progress component now supports custom --progress-color CSS variable for dashboard project cards
-- Verified seed endpoint creates complete demo data with Persian content
-
-Stage Summary:
-- All files verified complete and correct
-- 2 bugs fixed (notes pin toggle, progress bar custom color)
-- Production build passes cleanly
-- All APIs tested and working in both dev and production modes
+- 5 new API routes created (auth, register, session, ai/chat, notifications)
+- 2 new pages (auth-page, ai-page updated)
+- 4 existing files updated (topbar, page.tsx, types, store)
+- 10 API routes updated for multi-user auth
+- Mobile responsiveness improved across 5+ components
+- Production build passes cleanly (19 routes, 0 errors)

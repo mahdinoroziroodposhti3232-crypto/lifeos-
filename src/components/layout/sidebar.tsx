@@ -69,7 +69,7 @@ function SidebarNavItem({
     <button
       onClick={onClick}
       className={cn(
-        'group relative flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200',
+        'group relative flex w-full items-center gap-3 rounded-xl px-2.5 py-2 sm:px-3 sm:py-2.5 text-sm font-medium transition-all duration-200',
         'hover:bg-accent/60 hover:text-accent-foreground',
         isActive
           ? 'bg-accent text-accent-foreground shadow-sm'
@@ -211,7 +211,7 @@ export function Sidebar() {
             <TooltipTrigger asChild>
               <button
                 onClick={toggleTheme}
-                className="flex w-full items-center justify-center rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/60 hover:text-foreground"
+                className="flex w-full items-center justify-center rounded-xl px-2.5 py-2 sm:px-3 sm:py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/60 hover:text-foreground"
               >
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -237,7 +237,7 @@ export function Sidebar() {
         ) : (
           <button
             onClick={toggleTheme}
-            className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/60 hover:text-foreground"
+            className="flex w-full items-center gap-3 rounded-xl px-2.5 py-2 sm:px-3 sm:py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/60 hover:text-foreground"
           >
             <AnimatePresence mode="wait">
               <motion.div
@@ -274,7 +274,7 @@ export function Sidebar() {
           <button
             onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
             className={cn(
-              'flex w-full items-center rounded-xl px-3 py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/60 hover:text-foreground',
+              'flex w-full items-center rounded-xl px-2.5 py-2 sm:px-3 sm:py-2.5 text-sm font-medium text-muted-foreground transition-all duration-200 hover:bg-accent/60 hover:text-foreground',
               sidebarCollapsed ? 'justify-center' : 'gap-3'
             )}
           >
@@ -325,7 +325,7 @@ export function Sidebar() {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-            className="fixed top-0 right-0 z-50 h-screen w-[280px] border-l border-sidebar-border md:hidden shadow-2xl"
+            className="fixed top-0 right-0 z-50 h-screen w-[min(280px,85vw)] border-l border-sidebar-border md:hidden shadow-2xl"
           >
             {sidebarContent}
           </motion.aside>

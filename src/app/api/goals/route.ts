@@ -1,10 +1,18 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'لطفاً ابتدا وارد شوید' }, { status: 401 });
+    }
+    const userId = session.user.id;
+
     const goals = await db.goal.findMany({
-      where: {},
+      where: { userId },
       include: {
         milestones: {
           orderBy: { order: 'asc' },
@@ -22,6 +30,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'لطفاً ابتدا وارد شوید' }, { status: 401 });
+    }
+    const userId = session.user.id;
+
     const body = await request.json();
     const { milestones, ...goalData } = body;
 
@@ -34,7 +48,7 @@ export async function POST(request: NextRequest) {
         startDate: goalData.startDate,
         targetDate: goalData.targetDate,
         progress: goalData.progress || 0,
-        userId: goalData.userId || 'default',
+        userId,
         milestones: milestones
           ? {
               create: milestones.map((m: { title: string; order: number; isCompleted?: boolean }) => ({
@@ -60,9 +74,20 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'لطفاً ابتدا وارد شوید' }, { status: 401 });
+    }
+    const userId = session.user.id;
+
     const body = await request.json();
     const { id, milestones, ...data } = body;
     if (!id) return NextResponse.json({ error: 'شناسه هدف الزامی است' }, { status: 400 });
+
+    const existing = await db.goal.findFirst({ where: { id, userId } });
+    if (!existing) {
+      return NextResponse.json({ error: 'یافت نشد' }, { status: 404 });
+    }
 
     // If milestones are provided, delete existing ones and create new ones
     if (milestones) {
@@ -99,9 +124,20 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'لطفاً ابتدا وارد شوید' }, { status: 401 });
+    }
+    const userId = session.user.id;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'شناسه هدف الزامی است' }, { status: 400 });
+
+    const existing = await db.goal.findFirst({ where: { id, userId } });
+    if (!existing) {
+      return NextResponse.json({ error: 'یافت نشد' }, { status: 404 });
+    }
 
     // Delete milestones first, then the goal
     await db.milestone.deleteMany({ where: { goalId: id } });

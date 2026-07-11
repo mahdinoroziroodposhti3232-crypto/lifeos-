@@ -1,8 +1,16 @@
 import { db } from '@/lib/db';
 import { NextRequest, NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'لطفاً ابتدا وارد شوید' }, { status: 401 });
+    }
+    const userId = session.user.id;
+
     const { searchParams } = new URL(request.url);
     const action = searchParams.get('action');
 
@@ -14,7 +22,7 @@ export async function GET(request: NextRequest) {
       tomorrow.setDate(tomorrow.getDate() + 1);
 
       const habits = await db.habit.findMany({
-        where: {},
+        where: { userId },
         include: {
           records: {
             where: {
@@ -33,7 +41,7 @@ export async function GET(request: NextRequest) {
     }
 
     const habits = await db.habit.findMany({
-      where: {},
+      where: { userId },
       include: {
         records: {
           orderBy: { date: 'desc' },
@@ -51,6 +59,12 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'لطفاً ابتدا وارد شوید' }, { status: 401 });
+    }
+    const userId = session.user.id;
+
     const body = await request.json();
     const habit = await db.habit.create({
       data: {
@@ -62,7 +76,7 @@ export async function POST(request: NextRequest) {
         targetCount: body.targetCount || 1,
         unit: body.unit,
         startDate: body.startDate,
-        userId: body.userId || 'default',
+        userId,
       },
     });
     return NextResponse.json(habit, { status: 201 });
@@ -74,9 +88,20 @@ export async function POST(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'لطفاً ابتدا وارد شوید' }, { status: 401 });
+    }
+    const userId = session.user.id;
+
     const body = await request.json();
     const { id, ...data } = body;
     if (!id) return NextResponse.json({ error: 'شناسه عادت الزامی است' }, { status: 400 });
+
+    const existing = await db.habit.findFirst({ where: { id, userId } });
+    if (!existing) {
+      return NextResponse.json({ error: 'یافت نشد' }, { status: 404 });
+    }
 
     const habit = await db.habit.update({
       where: { id },
@@ -94,9 +119,20 @@ export async function PUT(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: 'لطفاً ابتدا وارد شوید' }, { status: 401 });
+    }
+    const userId = session.user.id;
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'شناسه عادت الزامی است' }, { status: 400 });
+
+    const existing = await db.habit.findFirst({ where: { id, userId } });
+    if (!existing) {
+      return NextResponse.json({ error: 'یافت نشد' }, { status: 404 });
+    }
 
     // Delete records first, then the habit
     await db.habitRecord.deleteMany({ where: { habitId: id } });

@@ -1,8 +1,17 @@
 import { create } from 'zustand';
-import type { PageType, UserSettings, Task, Project, Label, Goal, Habit, Note, FocusSession, CalendarEvent, DashboardWidget } from '@/types';
+import type { PageType, UserSettings, Task, Project, Label, Goal, Habit, Note, FocusSession, CalendarEvent, DashboardWidget, Notification } from '@/types';
 import { DEFAULT_USER_SETTINGS } from '@/types';
 
 interface AppState {
+  // User
+  user: { id: string; name: string; email: string; avatar?: string } | null;
+  setUser: (user: { id: string; name: string; email: string; avatar?: string } | null) => void;
+
+  // Notifications
+  notifications: Notification[];
+  setNotifications: (notifications: Notification[]) => void;
+  unreadCount: number;
+
   // Navigation
   currentPage: PageType;
   setCurrentPage: (page: PageType) => void;
@@ -47,6 +56,15 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set) => ({
+  // User
+  user: null,
+  setUser: (user) => set({ user }),
+
+  // Notifications
+  notifications: [],
+  setNotifications: (notifications) => set({ notifications, unreadCount: notifications.filter((n) => !n.read).length }),
+  unreadCount: 0,
+
   // Navigation
   currentPage: 'dashboard',
   setCurrentPage: (page) => set({ currentPage: page }),

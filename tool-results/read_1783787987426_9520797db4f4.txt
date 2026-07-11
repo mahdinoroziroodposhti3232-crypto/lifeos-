@@ -1,0 +1,933 @@
+     1→'use client';
+     2→
+     3→import { useState, useMemo, useCallback, useEffect } from 'react';
+     4→import { motion, AnimatePresence } from 'framer-motion';
+     5→import {
+     6→  Plus,
+     7→  ChevronDown,
+     8→  ChevronLeft,
+     9→  Trash2,
+    10→  Edit3,
+    11→  Target,
+    12→  CalendarDays,
+    13→  X,
+    14→  Milestone as MilestoneIcon,
+    15→} from 'lucide-react';
+    16→import { useMutation, useQueryClient } from '@tanstack/react-query';
+    17→
+    18→import { useAppStore } from '@/lib/store';
+    19→import { toJalaali, formatJalaaliDateShort } from '@/lib/jalali';
+    20→import { cn } from '@/lib/utils';
+    21→import {
+    22→  GOAL_CATEGORY_LABELS,
+    23→  type Goal,
+    24→  type GoalCategory,
+    25→  type Milestone,
+    26→} from '@/types';
+    27→
+    28→import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+    29→import { Badge } from '@/components/ui/badge';
+    30→import { Button } from '@/components/ui/button';
+    31→import { Input } from '@/components/ui/input';
+    32→import { Textarea } from '@/components/ui/textarea';
+    33→import { Progress } from '@/components/ui/progress';
+    34→import { Checkbox } from '@/components/ui/checkbox';
+    35→import { Separator } from '@/components/ui/separator';
+    36→import {
+    37→  Dialog,
+    38→  DialogContent,
+    39→  DialogHeader,
+    40→  DialogTitle,
+    41→  DialogFooter,
+    42→} from '@/components/ui/dialog';
+    43→import {
+    44→  Select,
+    45→  SelectTrigger,
+    46→  SelectValue,
+    47→  SelectContent,
+    48→  SelectItem,
+    49→} from '@/components/ui/select';
+    50→import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+    51→import {
+    52→  AlertDialog,
+    53→  AlertDialogAction,
+    54→  AlertDialogCancel,
+    55→  AlertDialogContent,
+    56→  AlertDialogDescription,
+    57→  AlertDialogFooter,
+    58→  AlertDialogHeader,
+    59→  AlertDialogTitle,
+    60→} from '@/components/ui/alert-dialog';
+    61→import { EmptyState } from '@/components/layout/empty-state';
+    62→
+    63→/* ------------------------------------------------------------------ */
+    64→/*  Constants                                                          */
+    65→/* ------------------------------------------------------------------ */
+    66→
+    67→const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
+    68→
+    69→function toPersianNum(num: number): string {
+    70→  return String(num).replace(/\d/g, (d) => persianDigits[parseInt(d)]);
+    71→}
+    72→
+    73→const CATEGORY_COLORS: Record<GoalCategory, { bg: string; text: string; dot: string; gradient: string }> = {
+    74→  personal: {
+    75→    bg: 'bg-teal-50 dark:bg-teal-950/30',
+    76→    text: 'text-teal-700 dark:text-teal-400',
+    77→    dot: '#14b8a6',
+    78→    gradient: 'from-teal-500 to-emerald-400',
+    79→  },
+    80→  work: {
+    81→    bg: 'bg-blue-50 dark:bg-blue-950/30',
+    82→    text: 'text-blue-700 dark:text-blue-400',
+    83→    dot: '#3b82f6',
+    84→    gradient: 'from-blue-500 to-indigo-400',
+    85→  },
+    86→  health: {
+    87→    bg: 'bg-green-50 dark:bg-green-950/30',
+    88→    text: 'text-green-700 dark:text-green-400',
+    89→    dot: '#22c55e',
+    90→    gradient: 'from-green-500 to-lime-400',
+    91→  },
+    92→  education: {
+    93→    bg: 'bg-purple-50 dark:bg-purple-950/30',
+    94→    text: 'text-purple-700 dark:text-purple-400',
+    95→    dot: '#a855f7',
+    96→    gradient: 'from-purple-500 to-violet-400',
+    97→  },
+    98→  financial: {
+    99→    bg: 'bg-amber-50 dark:bg-amber-950/30',
+   100→    text: 'text-amber-700 dark:text-amber-400',
+   101→    dot: '#f59e0b',
+   102→    gradient: 'from-amber-500 to-yellow-400',
+   103→  },
+   104→  social: {
+   105→    bg: 'bg-pink-50 dark:bg-pink-950/30',
+   106→    text: 'text-pink-700 dark:text-pink-400',
+   107→    dot: '#ec4899',
+   108→    gradient: 'from-pink-500 to-rose-400',
+   109→  },
+   110→};
+   111→
+   112→const CATEGORIES: GoalCategory[] = [
+   113→  'personal',
+   114→  'work',
+   115→  'health',
+   116→  'education',
+   117→  'financial',
+   118→  'social',
+   119→];
+   120→
+   121→/* ------------------------------------------------------------------ */
+   122→/*  Helper Functions                                                   */
+   123→/* ------------------------------------------------------------------ */
+   124→
+   125→function calculateProgress(goal: Goal): number {
+   126→  if (!goal.milestones || goal.milestones.length === 0) return 0;
+   127→  const completed = goal.milestones.filter((m) => m.isCompleted).length;
+   128→  return Math.round((completed / goal.milestones.length) * 100);
+   129→}
+   130→
+   131→function formatGoalDate(dateStr?: string): string | null {
+   132→  if (!dateStr) return null;
+   133→  try {
+   134→    const date = new Date(dateStr);
+   135→    return formatJalaaliDateShort(date);
+   136→  } catch {
+   137→    return dateStr;
+   138→  }
+   139→}
+   140→
+   141→function generateId(): string {
+   142→  return `ms_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+   143→}
+   144→
+   145→/* ------------------------------------------------------------------ */
+   146→/*  Goal Form Dialog State                                            */
+   147→/* ------------------------------------------------------------------ */
+   148→
+   149→interface GoalFormData {
+   150→  title: string;
+   151→  description: string;
+   152→  category: GoalCategory;
+   153→  startDate: string;
+   154→  endDate: string;
+   155→}
+   156→
+   157→const defaultGoalFormData: GoalFormData = {
+   158→  title: '',
+   159→  description: '',
+   160→  category: 'personal',
+   161→  startDate: '',
+   162→  endDate: '',
+   163→};
+   164→
+   165→/* ------------------------------------------------------------------ */
+   166→/*  Component                                                          */
+   167→/* ------------------------------------------------------------------ */
+   168→
+   169→export default function GoalsPage() {
+   170→  const { goals, setGoals } = useAppStore();
+   171→  const queryClient = useQueryClient();
+   172→
+   173→  const [showAddDialog, setShowAddDialog] = useState(false);
+   174→  const [editingGoal, setEditingGoal] = useState<Goal | null>(null);
+   175→  const [expandedGoalId, setExpandedGoalId] = useState<string | null>(null);
+   176→  const [activeCategory, setActiveCategory] = useState<string>('all');
+   177→  const [deleteTarget, setDeleteTarget] = useState<Goal | null>(null);
+   178→
+   179→  // Form state
+   180→  const [formData, setFormData] = useState<GoalFormData>(defaultGoalFormData);
+   181→  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+   182→
+   183→  // Milestone inline add state
+   184→  const [newMilestoneInputs, setNewMilestoneInputs] = useState<Record<string, string>>({});
+   185→
+   186→  /* ---------------------------------------------------------------- */
+   187→  /*  Fetch goals on mount                                             */
+   188→  /* ---------------------------------------------------------------- */
+   189→
+   190→  useEffect(() => {
+   191→    async function fetchGoals() {
+   192→      try {
+   193→        const res = await fetch('/api/goals');
+   194→        if (res.ok) {
+   195→          const data = await res.json();
+   196→          setGoals(data);
+   197→        }
+   198→      } catch (err) {
+   199→        console.error('Error fetching goals:', err);
+   200→      }
+   201→    }
+   202→    fetchGoals();
+   203→  }, [setGoals]);
+   204→
+   205→  /* ---------------------------------------------------------------- */
+   206→  /*  Mutations                                                        */
+   207→  /* ---------------------------------------------------------------- */
+   208→
+   209→  const createGoalMutation = useMutation({
+   210→    mutationFn: async (data: GoalFormData) => {
+   211→      const res = await fetch('/api/goals', {
+   212→        method: 'POST',
+   213→        headers: { 'Content-Type': 'application/json' },
+   214→        body: JSON.stringify({
+   215→          title: data.title,
+   216→          description: data.description || undefined,
+   217→          category: data.category,
+   218→          startDate: data.startDate || undefined,
+   219→          targetDate: data.endDate || undefined,
+   220→          progress: 0,
+   221→          userId: 'default',
+   222→          milestones: [],
+   223→        }),
+   224→      });
+   225→      if (!res.ok) throw new Error('خطا در ایجاد هدف');
+   226→      return res.json();
+   227→    },
+   228→    onSuccess: () => {
+   229→      queryClient.invalidateQueries({ queryKey: ['goals'] });
+   230→      refetchGoals();
+   231→      closeDialog();
+   232→    },
+   233→  });
+   234→
+   235→  interface UpdateGoalPayload {
+   236→    id: string;
+   237→    title: string;
+   238→    description?: string;
+   239→    category: GoalCategory;
+   240→    startDate?: string;
+   241→    endDate?: string;
+   242→    milestones?: Array<{ title: string; order: number; isCompleted: boolean }>;
+   243→  }
+   244→
+   245→  const updateGoalMutation = useMutation({
+   246→    mutationFn: async (data: UpdateGoalPayload) => {
+   247→      const res = await fetch('/api/goals', {
+   248→        method: 'PUT',
+   249→        headers: { 'Content-Type': 'application/json' },
+   250→        body: JSON.stringify({
+   251→          id: data.id,
+   252→          title: data.title,
+   253→          description: data.description,
+   254→          category: data.category,
+   255→          startDate: data.startDate || null,
+   256→          targetDate: data.endDate || null,
+   257→          progress: data.milestones && data.milestones.length > 0
+   258→            ? Math.round((data.milestones.filter((m) => m.isCompleted).length / data.milestones.length) * 100)
+   259→            : 0,
+   260→          status: data.milestones && data.milestones.length > 0 && data.milestones.every((m) => m.isCompleted) ? 'completed' : 'in_progress',
+   261→          milestones: (data.milestones || []).map((m, i) => ({
+   262→            title: m.title,
+   263→            order: i,
+   264→            isCompleted: m.isCompleted,
+   265→          })),
+   266→        }),
+   267→      });
+   268→      if (!res.ok) throw new Error('خطا در بروزرسانی هدف');
+   269→      return res.json();
+   270→    },
+   271→    onSuccess: () => {
+   272→      queryClient.invalidateQueries({ queryKey: ['goals'] });
+   273→      refetchGoals();
+   274→    },
+   275→  });
+   276→
+   277→  const deleteGoalMutation = useMutation({
+   278→    mutationFn: async (id: string) => {
+   279→      const res = await fetch(`/api/goals?id=${id}`, {
+   280→        method: 'DELETE',
+   281→      });
+   282→      if (!res.ok) throw new Error('خطا در حذف هدف');
+   283→    },
+   284→    onSuccess: () => {
+   285→      queryClient.invalidateQueries({ queryKey: ['goals'] });
+   286→      refetchGoals();
+   287→      setDeleteTarget(null);
+   288→    },
+   289→  });
+   290→
+   291→  /* ---------------------------------------------------------------- */
+   292→  /*  Helpers                                                          */
+   293→  /* ---------------------------------------------------------------- */
+   294→
+   295→  async function refetchGoals() {
+   296→    try {
+   297→      const res = await fetch('/api/goals');
+   298→      if (res.ok) {
+   299→        const data = await res.json();
+   300→        setGoals(data);
+   301→      }
+   302→    } catch (err) {
+   303→      console.error('Error refetching goals:', err);
+   304→    }
+   305→  }
+   306→
+   307→  function openAddDialog() {
+   308→    setEditingGoal(null);
+   309→    setFormData(defaultGoalFormData);
+   310→    setFormErrors({});
+   311→    setShowAddDialog(true);
+   312→  }
+   313→
+   314→  function openEditDialog(goal: Goal) {
+   315→    setEditingGoal(goal);
+   316→    setFormData({
+   317→      title: goal.title,
+   318→      description: goal.description || '',
+   319→      category: goal.category,
+   320→      startDate: goal.startDate || '',
+   321→      endDate: goal.endDate || '',
+   322→    });
+   323→    setFormErrors({});
+   324→    setShowAddDialog(true);
+   325→  }
+   326→
+   327→  function closeDialog() {
+   328→    setShowAddDialog(false);
+   329→    setEditingGoal(null);
+   330→    setFormData(defaultGoalFormData);
+   331→    setFormErrors({});
+   332→  }
+   333→
+   334→  function validateForm(): boolean {
+   335→    const errors: Record<string, string> = {};
+   336→    if (!formData.title.trim()) {
+   337→      errors.title = 'عنوان هدف الزامی است';
+   338→    }
+   339→    setFormErrors(errors);
+   340→    return Object.keys(errors).length === 0;
+   341→  }
+   342→
+   343→  function handleSubmit() {
+   344→    if (!validateForm()) return;
+   345→    if (editingGoal) {
+   346→      const milestonesPayload = (editingGoal.milestones || []).map((m, i) => ({
+   347→        title: m.title,
+   348→        order: i,
+   349→        isCompleted: m.isCompleted,
+   350→      }));
+   351→      updateGoalMutation.mutate({
+   352→        id: editingGoal.id,
+   353→        title: formData.title,
+   354→        description: formData.description || undefined,
+   355→        category: formData.category,
+   356→        startDate: formData.startDate || undefined,
+   357→        endDate: formData.endDate || undefined,
+   358→        milestones: milestonesPayload,
+   359→      });
+   360→      closeDialog();
+   361→    } else {
+   362→      createGoalMutation.mutate(formData);
+   363→    }
+   364→  }
+   365→
+   366→  function toggleMilestone(goal: Goal, milestoneId: string) {
+   367→    if (!goal.milestones) return;
+   368→    const updatedMilestones = goal.milestones.map((m, i) => ({
+   369→      title: m.id === milestoneId ? m.title : m.title,
+   370→      order: i,
+   371→      isCompleted: m.id === milestoneId ? !m.isCompleted : m.isCompleted,
+   372→    }));
+   373→    updateGoalMutation.mutate({
+   374→      id: goal.id,
+   375→      title: goal.title,
+   376→      description: goal.description,
+   377→      category: goal.category,
+   378→      startDate: goal.startDate,
+   379→      endDate: goal.endDate,
+   380→      milestones: updatedMilestones,
+   381→    });
+   382→  }
+   383→
+   384→  function addMilestone(goalId: string) {
+   385→    const inputText = newMilestoneInputs[goalId]?.trim();
+   386→    if (!inputText) return;
+   387→
+   388→    const goal = goals.find((g) => g.id === goalId);
+   389→    if (!goal) return;
+   390→
+   391→    const existingMilestones = (goal.milestones || []).map((m) => ({
+   392→      title: m.title,
+   393→      order: m.order,
+   394→      isCompleted: m.isCompleted,
+   395→    }));
+   396→
+   397→    const newMilestones = [
+   398→      ...existingMilestones,
+   399→      {
+   400→        title: inputText,
+   401→        order: existingMilestones.length,
+   402→        isCompleted: false,
+   403→      },
+   404→    ];
+   405→
+   406→    updateGoalMutation.mutate({
+   407→      id: goal.id,
+   408→      title: goal.title,
+   409→      description: goal.description,
+   410→      category: goal.category,
+   411→      startDate: goal.startDate,
+   412→      endDate: goal.endDate,
+   413→      milestones: newMilestones,
+   414→    });
+   415→    setNewMilestoneInputs((prev) => ({ ...prev, [goalId]: '' }));
+   416→  }
+   417→
+   418→  function toggleExpand(goalId: string) {
+   419→    setExpandedGoalId((prev) => (prev === goalId ? null : goalId));
+   420→  }
+   421→
+   422→  /* ---------------------------------------------------------------- */
+   423→  /*  Computed                                                         */
+   424→  /* ---------------------------------------------------------------- */
+   425→
+   426→  const filteredGoals = useMemo(() => {
+   427→    if (activeCategory === 'all') return goals;
+   428→    return goals.filter((g) => g.category === activeCategory);
+   429→  }, [goals, activeCategory]);
+   430→
+   431→  const goalsWithProgress = useMemo(() => {
+   432→    return filteredGoals.map((goal) => ({
+   433→      goal,
+   434→      progress: calculateProgress(goal),
+   435→    }));
+   436→  }, [filteredGoals]);
+   437→
+   438→  /* ---------------------------------------------------------------- */
+   439→  /*  Render                                                           */
+   440→  /* ---------------------------------------------------------------- */
+   441→
+   442→  return (
+   443→    <div className="flex flex-col gap-6 p-4 md:p-6 lg:p-8">
+   444→      {/* Header */}
+   445→      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+   446→        <div>
+   447→          <h1 className="text-2xl font-bold tracking-tight">اهداف</h1>
+   448→          <p className="text-sm text-muted-foreground mt-1">
+   449→            اهداف بلندمدت خود را دنبال کنید
+   450→          </p>
+   451→        </div>
+   452→
+   453→        <Button onClick={openAddDialog} className="gap-2 rounded-xl">
+   454→          <Plus className="h-4 w-4" />
+   455→          هدف جدید
+   456→        </Button>
+   457→      </div>
+   458→
+   459→      {/* Category Filter */}
+   460→      <Tabs
+   461→        value={activeCategory}
+   462→        onValueChange={setActiveCategory}
+   463→        className="w-full"
+   464→      >
+   465→        <TabsList className="w-full justify-start overflow-x-auto rounded-xl bg-muted/60 p-1 h-auto">
+   466→          <TabsTrigger
+   467→            value="all"
+   468→            className="rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm"
+   469→          >
+   470→            همه
+   471→          </TabsTrigger>
+   472→          {CATEGORIES.map((cat) => (
+   473→            <TabsTrigger
+   474→              key={cat}
+   475→              value={cat}
+   476→              className="rounded-lg px-3 py-1.5 text-xs font-medium whitespace-nowrap data-[state=active]:bg-background data-[state=active]:shadow-sm"
+   477→            >
+   478→              {GOAL_CATEGORY_LABELS[cat]}
+   479→            </TabsTrigger>
+   480→          ))}
+   481→        </TabsList>
+   482→      </Tabs>
+   483→
+   484→      {/* Content */}
+   485→      {goalsWithProgress.length === 0 ? (
+   486→        <EmptyState
+   487→          icon={Target}
+   488→          title="هنوز هدفی تعیین نکرده‌اید"
+   489→          description="با تعیین اهداف بلندمدت و ایجاد گام‌های میانی، مسیر موفقیت خود را ترسیم کنید."
+   490→          action={{
+   491→            label: '+ هدف جدید',
+   492→            onClick: openAddDialog,
+   493→          }}
+   494→        />
+   495→      ) : (
+   496→        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+   497→          <AnimatePresence mode="popLayout">
+   498→            {goalsWithProgress.map(({ goal, progress }, index) => {
+   499→              const isExpanded = expandedGoalId === goal.id;
+   500→              const catStyle = CATEGORY_COLORS[goal.category];
+   501→              const completedCount = (goal.milestones || []).filter((m) => m.isCompleted).length;
+   502→              const totalCount = (goal.milestones || []).length;
+   503→              const isCompleted = progress >= 100;
+   504→
+   505→              return (
+   506→                <motion.div
+   507→                  key={goal.id}
+   508→                  layout
+   509→                  initial={{ opacity: 0, y: 20, scale: 0.95 }}
+   510→                  animate={{ opacity: 1, y: 0, scale: 1 }}
+   511→                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+   512→                  transition={{
+   513→                    duration: 0.3,
+   514→                    delay: index * 0.05,
+   515→                    ease: [0.25, 0.46, 0.45, 0.94],
+   516→                  }}
+   517→                >
+   518→                  <Card
+   519→                    className={cn(
+   520→                      'group relative overflow-hidden border-border/50 backdrop-blur-sm transition-all duration-300 hover:shadow-lg',
+   521→                      isExpanded && 'ring-1 ring-border',
+   522→                      isCompleted && 'border-green-200 dark:border-green-800/50'
+   523→                    )}
+   524→                  >
+   525→                    {/* Color accent strip */}
+   526→                    <div
+   527→                      className={cn(
+   528→                        'absolute top-0 right-0 h-1 w-full bg-gradient-to-l',
+   529→                        catStyle.gradient
+   530→                      )}
+   531→                    />
+   532→
+   533→                    {/* Header (always visible) */}
+   534→                    <CardHeader
+   535→                      className="cursor-pointer select-none pb-3"
+   536→                      onClick={() => toggleExpand(goal.id)}
+   537→                    >
+   538→                      <div className="flex items-start justify-between gap-2">
+   539→                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+   540→                          <div
+   541→                            className="h-2.5 w-2.5 shrink-0 rounded-full"
+   542→                            style={{ backgroundColor: catStyle.dot }}
+   543→                          />
+   544→                          <div className="min-w-0 flex-1">
+   545→                            <div className="flex flex-wrap items-center gap-2">
+   546→                              <Badge
+   547→                                variant="secondary"
+   548→                                className={cn(
+   549→                                  'text-[10px] px-2 py-0 h-5 font-medium border-0',
+   550→                                  catStyle.bg,
+   551→                                  catStyle.text
+   552→                                )}
+   553→                              >
+   554→                                {GOAL_CATEGORY_LABELS[goal.category]}
+   555→                              </Badge>
+   556→                              {isCompleted && (
+   557→                                <Badge
+   558→                                  variant="secondary"
+   559→                                  className="text-[10px] px-2 py-0 h-5 font-medium bg-green-50 text-green-700 border-0 dark:bg-green-950/30 dark:text-green-400"
+   560→                                >
+   561→                                  تکمیل شده
+   562→                                </Badge>
+   563→                              )}
+   564→                            </div>
+   565→                            <CardTitle
+   566→                              className={cn(
+   567→                                'mt-1.5 text-sm font-semibold truncate',
+   568→                                isCompleted && 'line-through opacity-60'
+   569→                              )}
+   570→                            >
+   571→                              {goal.title}
+   572→                            </CardTitle>
+   573→                          </div>
+   574→                        </div>
+   575→
+   576→                        <div className="flex items-center gap-1 shrink-0">
+   577→                          {/* Edit */}
+   578→                          <Button
+   579→                            variant="ghost"
+   580→                            size="icon"
+   581→                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
+   582→                            onClick={(e) => {
+   583→                              e.stopPropagation();
+   584→                              openEditDialog(goal);
+   585→                            }}
+   586→                          >
+   587→                            <Edit3 className="h-3.5 w-3.5" />
+   588→                          </Button>
+   589→                          {/* Delete */}
+   590→                          <Button
+   591→                            variant="ghost"
+   592→                            size="icon"
+   593→                            className="h-7 w-7 text-destructive opacity-0 group-hover:opacity-100 transition-opacity hover:text-destructive"
+   594→                            onClick={(e) => {
+   595→                              e.stopPropagation();
+   596→                              setDeleteTarget(goal);
+   597→                            }}
+   598→                          >
+   599→                            <Trash2 className="h-3.5 w-3.5" />
+   600→                          </Button>
+   601→                          {/* Expand/Collapse */}
+   602→                          <motion.div
+   603→                            animate={{ rotate: isExpanded ? 180 : 0 }}
+   604→                            transition={{ duration: 0.2 }}
+   605→                          >
+   606→                            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+   607→                          </motion.div>
+   608→                        </div>
+   609→                      </div>
+   610→
+   611→                      {/* Progress Bar */}
+   612→                      <div className="mt-3 space-y-1.5">
+   613→                        <div className="flex items-center justify-between">
+   614→                          <span className="text-[11px] text-muted-foreground">
+   615→                            {totalCount > 0
+   616→                              ? `${toPersianNum(completedCount)} از ${toPersianNum(totalCount)} گام`
+   617→                              : 'بدون گام میانی'}
+   618→                          </span>
+   619→                          <span className="text-[11px] font-medium tabular-nums">
+   620→                            {toPersianNum(progress)}٪
+   621→                          </span>
+   622→                        </div>
+   623→                        <div className="relative h-2 w-full overflow-hidden rounded-full bg-muted">
+   624→                          <motion.div
+   625→                            className={cn(
+   626→                              'absolute inset-y-0 right-0 rounded-full bg-gradient-to-l',
+   627→                              catStyle.gradient
+   628→                            )}
+   629→                            initial={{ width: 0 }}
+   630→                            animate={{ width: `${progress}%` }}
+   631→                            transition={{ duration: 0.6, ease: 'easeOut' }}
+   632→                          />
+   633→                        </div>
+   634→                      </div>
+   635→
+   636→                      {/* Due Date */}
+   637→                      {goal.endDate && (
+   638→                        <div className="mt-2 flex items-center gap-1.5">
+   639→                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
+   640→                          <span className="text-[11px] text-muted-foreground">
+   641→                            مهلت: {formatGoalDate(goal.endDate)}
+   642→                          </span>
+   643→                        </div>
+   644→                      )}
+   645→                    </CardHeader>
+   646→
+   647→                    {/* Body (expanded) */}
+   648→                    <AnimatePresence initial={false}>
+   649→                      {isExpanded && (
+   650→                        <motion.div
+   651→                          initial={{ height: 0, opacity: 0 }}
+   652→                          animate={{ height: 'auto', opacity: 1 }}
+   653→                          exit={{ height: 0, opacity: 0 }}
+   654→                          transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+   655→                          className="overflow-hidden"
+   656→                        >
+   657→                          <Separator className="mx-6" />
+   658→
+   659→                          <CardContent className="pt-4 space-y-4">
+   660→                            {/* Description */}
+   661→                            {goal.description && (
+   662→                              <p className="text-xs leading-relaxed text-muted-foreground whitespace-pre-wrap">
+   663→                                {goal.description}
+   664→                              </p>
+   665→                            )}
+   666→
+   667→                            {/* Milestones */}
+   668→                            <div className="space-y-2">
+   669→                              <div className="flex items-center gap-2">
+   670→                                <MilestoneIcon className="h-3.5 w-3.5 text-muted-foreground" />
+   671→                                <span className="text-xs font-medium text-foreground">
+   672→                                  گام‌های میانی
+   673→                                </span>
+   674→                                {totalCount > 0 && (
+   675→                                  <span className="text-[10px] text-muted-foreground">
+   676→                                    ({toPersianNum(completedCount)}/{toPersianNum(totalCount)})
+   677→                                  </span>
+   678→                                )}
+   679→                              </div>
+   680→
+   681→                              {/* Milestones List */}
+   682→                              <div className="space-y-1">
+   683→                                {(goal.milestones || []).map((milestone) => (
+   684→                                  <div
+   685→                                    key={milestone.id}
+   686→                                    className={cn(
+   687→                                      'group/milestone flex items-center gap-2.5 rounded-lg px-2.5 py-2 transition-colors',
+   688→                                      'hover:bg-muted/50',
+   689→                                      milestone.isCompleted && 'opacity-60'
+   690→                                    )}
+   691→                                  >
+   692→                                    <Checkbox
+   693→                                      checked={milestone.isCompleted}
+   694→                                      onCheckedChange={() => toggleMilestone(goal, milestone.id)}
+   695→                                      className="shrink-0"
+   696→                                      dir="ltr"
+   697→                                    />
+   698→                                    <span
+   699→                                      className={cn(
+   700→                                        'flex-1 text-xs leading-relaxed',
+   701→                                        milestone.isCompleted && 'line-through text-muted-foreground'
+   702→                                      )}
+   703→                                    >
+   704→                                      {milestone.title}
+   705→                                    </span>
+   706→                                    {milestone.dueDate && (
+   707→                                      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+   708→                                        {formatGoalDate(milestone.dueDate)}
+   709→                                      </span>
+   710→                                    )}
+   711→                                  </div>
+   712→                                ))}
+   713→
+   714→                                {(!goal.milestones || goal.milestones.length === 0) && (
+   715→                                  <p className="py-3 text-center text-[11px] text-muted-foreground">
+   716→                                    هنوز گام میانی تعیین نشده است
+   717→                                  </p>
+   718→                                )}
+   719→                              </div>
+   720→
+   721→                              {/* Add Milestone (inline) */}
+   722→                              <div className="flex items-center gap-2 pt-1">
+   723→                                <div className="relative flex-1">
+   724→                                  <Input
+   725→                                    placeholder="گام میانی جدید... (Enter برای افزودن)"
+   726→                                    value={newMilestoneInputs[goal.id] || ''}
+   727→                                    onChange={(e) =>
+   728→                                      setNewMilestoneInputs((prev) => ({
+   729→                                        ...prev,
+   730→                                        [goal.id]: e.target.value,
+   731→                                      }))
+   732→                                    }
+   733→                                    onKeyDown={(e) => {
+   734→                                      if (e.key === 'Enter') {
+   735→                                        e.preventDefault();
+   736→                                        addMilestone(goal.id);
+   737→                                      }
+   738→                                    }}
+   739→                                    className="h-8 text-xs rounded-lg pr-8"
+   740→                                    dir="rtl"
+   741→                                  />
+   742→                                  <Plus className="absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+   743→                                </div>
+   744→                                <Button
+   745→                                  size="sm"
+   746→                                  variant="ghost"
+   747→                                  className="h-8 px-3 text-xs rounded-lg shrink-0"
+   748→                                  onClick={() => addMilestone(goal.id)}
+   749→                                  disabled={!newMilestoneInputs[goal.id]?.trim()}
+   750→                                >
+   751→                                  افزودن
+   752→                                </Button>
+   753→                              </div>
+   754→                            </div>
+   755→
+   756→                            {/* Progress Visualization */}
+   757→                            {totalCount > 0 && (
+   758→                              <div className="flex items-center gap-1.5 pt-1">
+   759→                                {(goal.milestones || []).map((m, i) => (
+   760→                                  <div
+   761→                                    key={m.id}
+   762→                                    className={cn(
+   763→                                      'h-1.5 flex-1 rounded-full transition-all duration-300',
+   764→                                      m.isCompleted
+   765→                                        ? ''
+   766→                                        : 'bg-muted-foreground/15'
+   767→                                    )}
+   768→                                    style={
+   769→                                      m.isCompleted
+   770→                                        ? { backgroundColor: catStyle.dot }
+   771→                                        : undefined
+   772→                                    }
+   773→                                  />
+   774→                                ))}
+   775→                              </div>
+   776→                            )}
+   777→                          </CardContent>
+   778→                        </motion.div>
+   779→                      )}
+   780→                    </AnimatePresence>
+   781→                  </Card>
+   782→                </motion.div>
+   783→              );
+   784→            })}
+   785→          </AnimatePresence>
+   786→        </div>
+   787→      )}
+   788→
+   789→      {/* Add/Edit Dialog */}
+   790→      <Dialog open={showAddDialog} onOpenChange={(open) => { if (!open) closeDialog(); }}>
+   791→        <DialogContent className="sm:max-w-[460px]" dir="rtl">
+   792→          <DialogHeader>
+   793→            <DialogTitle className="text-right">
+   794→              {editingGoal ? 'ویرایش هدف' : 'هدف جدید'}
+   795→            </DialogTitle>
+   796→          </DialogHeader>
+   797→
+   798→          <div className="space-y-4 py-2">
+   799→            {/* Title */}
+   800→            <div className="space-y-2">
+   801→              <label className="text-sm font-medium text-foreground">
+   802→                عنوان <span className="text-destructive">*</span>
+   803→              </label>
+   804→              <Input
+   805→                placeholder="مثلاً: یادگیری زبان انگلیسی، ورزش روزانه..."
+   806→                value={formData.title}
+   807→                onChange={(e) => setFormData((prev) => ({ ...prev, title: e.target.value }))}
+   808→                className={cn(formErrors.title && 'border-destructive')}
+   809→              />
+   810→              {formErrors.title && (
+   811→                <p className="text-xs text-destructive">{formErrors.title}</p>
+   812→              )}
+   813→            </div>
+   814→
+   815→            {/* Description */}
+   816→            <div className="space-y-2">
+   817→              <label className="text-sm font-medium text-foreground">توضیحات</label>
+   818→              <Textarea
+   819→                placeholder="توضیح مختصری درباره این هدف..."
+   820→                value={formData.description}
+   821→                onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+   822→                rows={3}
+   823→                className="resize-none"
+   824→              />
+   825→            </div>
+   826→
+   827→            {/* Category */}
+   828→            <div className="space-y-2">
+   829→              <label className="text-sm font-medium text-foreground">دسته‌بندی</label>
+   830→              <Select
+   831→                value={formData.category}
+   832→                onValueChange={(val) =>
+   833→                  setFormData((prev) => ({ ...prev, category: val as GoalCategory }))
+   834→                }
+   835→              >
+   836→                <SelectTrigger className="w-full">
+   837→                  <SelectValue />
+   838→                </SelectTrigger>
+   839→                <SelectContent>
+   840→                  {CATEGORIES.map((cat) => (
+   841→                    <SelectItem key={cat} value={cat}>
+   842→                      <div className="flex items-center gap-2">
+   843→                        <div
+   844→                          className="h-2.5 w-2.5 rounded-full"
+   845→                          style={{ backgroundColor: CATEGORY_COLORS[cat].dot }}
+   846→                        />
+   847→                        {GOAL_CATEGORY_LABELS[cat]}
+   848→                      </div>
+   849→                    </SelectItem>
+   850→                  ))}
+   851→                </SelectContent>
+   852→              </Select>
+   853→            </div>
+   854→
+   855→            {/* Dates */}
+   856→            <div className="grid grid-cols-2 gap-3">
+   857→              <div className="space-y-2">
+   858→                <label className="text-sm font-medium text-foreground">تاریخ شروع</label>
+   859→                <Input
+   860→                  type="date"
+   861→                  value={formData.startDate}
+   862→                  onChange={(e) =>
+   863→                    setFormData((prev) => ({ ...prev, startDate: e.target.value }))
+   864→                  }
+   865→                  className="w-full"
+   866→                  dir="ltr"
+   867→                />
+   868→              </div>
+   869→              <div className="space-y-2">
+   870→                <label className="text-sm font-medium text-foreground">تاریخ پایان</label>
+   871→                <Input
+   872→                  type="date"
+   873→                  value={formData.endDate}
+   874→                  onChange={(e) =>
+   875→                    setFormData((prev) => ({ ...prev, endDate: e.target.value }))
+   876→                  }
+   877→                  className="w-full"
+   878→                  dir="ltr"
+   879→                />
+   880→              </div>
+   881→            </div>
+   882→          </div>
+   883→
+   884→          <DialogFooter className="gap-2 sm:gap-2">
+   885→            <Button
+   886→              variant="outline"
+   887→              onClick={closeDialog}
+   888→              className="rounded-xl"
+   889→            >
+   890→              انصراف
+   891→            </Button>
+   892→            <Button
+   893→              onClick={handleSubmit}
+   894→              disabled={createGoalMutation.isPending || updateGoalMutation.isPending}
+   895→              className="rounded-xl"
+   896→            >
+   897→              {createGoalMutation.isPending || updateGoalMutation.isPending
+   898→                ? 'در حال ذخیره...'
+   899→                : editingGoal
+   900→                  ? 'بروزرسانی'
+   901→                  : 'ایجاد هدف'}
+   902→            </Button>
+   903→          </DialogFooter>
+   904→        </DialogContent>
+   905→      </Dialog>
+   906→
+   907→      {/* Delete Confirmation */}
+   908→      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+   909→        <AlertDialogContent dir="rtl">
+   910→          <AlertDialogHeader>
+   911→            <AlertDialogTitle>حذف هدف</AlertDialogTitle>
+   912→            <AlertDialogDescription>
+   913→              آیا از حذف هدف «{deleteTarget?.title}» اطمینان دارید؟ تمام گام‌های میانی مرتبط نیز حذف خواهد شد. این عمل قابل بازگشت نیست.
+   914→            </AlertDialogDescription>
+   915→          </AlertDialogHeader>
+   916→          <AlertDialogFooter className="gap-2">
+   917→            <AlertDialogCancel className="rounded-xl">انصراف</AlertDialogCancel>
+   918→            <AlertDialogAction
+   919→              onClick={() => {
+   920→                if (deleteTarget) {
+   921→                  deleteGoalMutation.mutate(deleteTarget.id);
+   922→                }
+   923→              }}
+   924→              className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90"
+   925→            >
+   926→              {deleteGoalMutation.isPending ? 'در حال حذف...' : 'حذف'}
+   927→            </AlertDialogAction>
+   928→          </AlertDialogFooter>
+   929→        </AlertDialogContent>
+   930→      </AlertDialog>
+   931→    </div>
+   932→  );
+   933→}

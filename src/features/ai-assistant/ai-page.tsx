@@ -39,52 +39,20 @@ const QUICK_ACTIONS = [
   { label: 'پیشنهاد اولویت', query: 'پیشنهاد اولویت' },
 ];
 
-function generateResponse(input: string): string {
-  const lower = input.toLowerCase();
+async function fetchAIResponse(messages: Array<{ role: 'user' | 'assistant'; content: string }>): Promise<string> {
+  const res = await fetch('/api/ai/chat', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ messages }),
+  });
 
-  if (
-    lower.includes('برنامه') ||
-    lower.includes('planning') ||
-    lower.includes('today') ||
-    lower.includes('امروز')
-  ) {
-    return `برنامه پیشنهادی امروز شما:
-
-۱. جلسه تیمی ساعت ۱۰:۰۰ (اولویت: فوری)
-۲. تکمیل طراحی صفحه اصلی (اولویت: زیاد)
-۳. مرور کدهای امروز (اولویت: متوسط)
-۴. ورزش ۳۰ دقیقه (اولویت: کم)
-
-پیشنهاد: با جلسه تیمی شروع کنید چون زمان‌بندی مشخصی دارد.`;
+  if (!res.ok) {
+    const data = await res.json().catch(() => null);
+    throw new Error(data?.error || `خطای سرور (${res.status})`);
   }
 
-  if (lower.includes('عملکرد') || lower.includes('performance')) {
-    return `تحلیل عملکرد شما در این هفته:
-
-✅ ۱۲ وظیفه انجام شده از ۱۸ وظیفه (۶۷٪)
-⏱️ ۵ ساعت و ۳۰ دقیقه تمرکز
-🔥 عادت مطالعه: ۵ روز متوالی
-📊 پروژه طراحی وبسایت: ۷۵٪ پیشرفت
-
-نکته: عملکرد شما نسبت به هفته قبل ۱۵٪ بهبود داشته!`;
-  }
-
-  if (lower.includes('اولویت') || lower.includes('priority')) {
-    return `بر اساس تحلیل وظایف شما، این اولویت‌بندی پیشنهاد می‌شود:
-
-🔴 فوری: گزارش پروژه (مهلت امروز)
-🟡 زیاد: طراحی رابط کاربری
-🔵 متوسط: به‌روزرسانی مستندات
-⚪ کم: مرور مقالات`;
-  }
-
-  return `متوجه شدم! برای بهتر کمک کردن، می‌توانید از این دستورات استفاده کنید:
-
-• «برنامه‌ریزی امروز» — برنامه پیشنهادی روز
-• «تحلیل عملکرد» — بررسی عملکرد هفتگی
-• «پیشنهاد اولویت» — اولویت‌بندی وظایف
-
-همچنین می‌توانید سوال خاصی بپرسید!`;
+  const data = await res.json();
+  return data.content;
 }
 
 /* ------------------------------------------------------------------ */
@@ -163,20 +131,23 @@ export default function AIPage() {
       setInputText('');
       setIsLoading(true);
 
-      /* Simulate AI delay */
-      const delay = 1000 + Math.random() * 1000;
-      setTimeout(() => {
-        const response = generateResponse(text);
-        const assistantMessage: ChatMessage = {
-          id: `assistant-${Date.now()}`,
-          role: 'assistant',
-          content: response,
-        };
-        setMessages((prev) => [...prev, assistantMessage]);
-        setIsLoading(false);
-      }, delay);
+      fetchAIResponse([...messages, userMessage].map(({ role, content }) => ({ role, content })))
+        .then((response) => {
+          const assistantMessage: ChatMessage = {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            content: response,
+          };
+          setMessages((prev) => [...prev, assistantMessage]);
+        })
+        .catch((err) => {
+          toast.error(err.message || 'خطا در ارتباط با دستیار هوشمند');
+        })
+        .finally(() => {
+          setIsLoading(false);
+        });
     },
-    [isLoading]
+    [isLoading, messages]
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -310,7 +281,7 @@ export default function AIPage() {
           </form>
 
           <p className="mt-2 text-center text-[10px] text-muted-foreground/50">
-            این دستیار شبیه‌سازی شده و داده‌های واقعی را تحلیل نمی‌کند
+            دستیار هوشمند لایف‌او‌اس — همه پاسخ‌ها توسط هوش مصنوعی تولید می‌شود
           </p>
         </div>
       </div>
