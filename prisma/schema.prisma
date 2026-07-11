@@ -14,6 +14,11 @@ model User {
   name          String   @default("کاربر")
   avatar        String?
   bio           String?
+  role          String   @default("user")
+  isActive      Boolean  @default(true)
+  resetToken    String?
+  resetTokenEx  DateTime?
+  lastLoginAt   DateTime?
   timezone      String   @default("Asia/Tehran")
   calendarType  String   @default("shamsi")
   theme         String   @default("system")
@@ -34,6 +39,25 @@ model User {
   notifications  Notification[]
   settings       UserSetting[]
   dashboardLayout DashboardLayout?
+  auditLogs      AuditLog[]
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  entity    String?
+  entityId  String?
+  details   String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  userId    String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model Project {
@@ -219,6 +243,14 @@ model Notification {
   userId    String
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model SystemSetting {
+  id        String @id @default(cuid())
+  key       String   @unique
+  value     String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model DashboardLayout {

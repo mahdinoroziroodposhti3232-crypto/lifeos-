@@ -24,11 +24,32 @@ export const authOptions: NextAuthOptions = {
           return null;
         }
 
+        // Block inactive users
+        if (!user.isActive) {
+          return null;
+        }
+
         const isPasswordValid = await bcrypt.compare(credentials.password, user.password);
 
         if (!isPasswordValid) {
           return null;
         }
+
+        // Update last login
+        await db.user.update({
+          where: { id: user.id },
+          data: { lastLoginAt: new Date() },
+        });
+
+        // Create audit log
+        await db.auditLog.create({
+          data: {
+            action: 'LOGIN',
+            entity: 'User',
+            entityId: user.id,
+            userId: user.id,
+          },
+        }).catch(() => {});
 
         return {
           id: user.id,
