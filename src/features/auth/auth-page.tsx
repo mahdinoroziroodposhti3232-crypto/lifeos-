@@ -4,12 +4,11 @@ import { useState } from 'react';
 import { signIn } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
-import { Mail, Lock, User, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
+import { Mail, Lock, User, Eye, EyeOff, Loader2, ArrowRight, LogIn, UserPlus, KeyRound } from 'lucide-react';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 function getPasswordStrength(password: string): {
   score: number;
@@ -153,18 +152,6 @@ export function AuthPage() {
     }
   }
 
-  const getTitle = () => {
-    if (mode === 'forgot') return forgotSent ? 'ایمیل ارسال شد' : 'فراموشی رمز عبور';
-    if (mode === 'register') return 'ایجاد حساب جدید';
-    return 'ورود به حساب کاربری';
-  };
-
-  const getSubtitle = () => {
-    if (mode === 'forgot') return forgotSent ? 'لینک ریست به ایمیل شما ارسال شد.' : 'ایمیل خود را وارد کنید تا لینک ریست بفرستیم.';
-    if (mode === 'register') return 'یک حساب جدید برای شروع ایجاد کنید.';
-    return 'خوش آمدید! لطفاً وارد شوید.';
-  };
-
   return (
     <div className="flex min-h-screen" dir="rtl">
       {/* Branding Side */}
@@ -218,11 +205,70 @@ export function AuthPage() {
           </div>
 
           <Card className="border-0 shadow-xl shadow-black/5 bg-card/80 backdrop-blur-sm">
-            <CardHeader className="pb-4 text-center">
-              <h2 className="text-2xl font-bold text-foreground">{getTitle()}</h2>
-              <p className="text-sm text-muted-foreground">{getSubtitle()}</p>
+            <CardHeader className="pb-2 text-center">
+              <h2 className="text-2xl font-bold text-foreground">خوش آمدید</h2>
+              <p className="text-sm text-muted-foreground">برای شروع، وارد شوید یا حساب جدید بسازید</p>
             </CardHeader>
             <CardContent>
+              {/* ===== TAB BUTTONS ===== */}
+              <div className="mb-6 rounded-xl bg-muted/50 p-1.5">
+                <div className="relative grid grid-cols-2 gap-1">
+                  {mode === 'forgot' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setMode('login')}
+                        className="relative z-10 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium text-muted-foreground transition-colors cursor-pointer"
+                      >
+                        <LogIn className="h-4 w-4" />
+                        ورود
+                      </button>
+                      <div className="relative flex items-center justify-center gap-2 rounded-lg bg-background py-2.5 text-sm font-semibold text-foreground shadow-sm">
+                        <KeyRound className="h-4 w-4 text-emerald-600" />
+                        بازیابی رمز
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setMode('login')}
+                        className={`relative z-10 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors cursor-pointer ${
+                          mode === 'login'
+                            ? 'text-foreground'
+                            : 'text-muted-foreground hover:text-foreground/80'
+                        }`}
+                      >
+                        <LogIn className="h-4 w-4" />
+                        ورود
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMode('register')}
+                        className={`relative z-10 flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-medium transition-colors cursor-pointer ${
+                          mode === 'register'
+                            ? 'text-foreground'
+                            : 'text-muted-foreground hover:text-foreground/80'
+                        }`}
+                      >
+                        <UserPlus className="h-4 w-4" />
+                        ثبت‌نام
+                      </button>
+                      {/* Active tab indicator */}
+                      <motion.div
+                        className="absolute inset-y-1 rounded-lg bg-background shadow-sm"
+                        initial={false}
+                        animate={{
+                          right: mode === 'login' ? '0%' : '50%',
+                          width: '50%',
+                        }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                      />
+                    </>
+                  )}
+                </div>
+              </div>
+
               <AnimatePresence mode="wait">
                 {/* ===== FORGOT PASSWORD ===== */}
                 {mode === 'forgot' && (
@@ -252,10 +298,6 @@ export function AuthPage() {
                         <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer" disabled={isLoading}>
                           {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ارسال لینک ریست'}
                         </Button>
-                        <button type="button" onClick={() => setMode('login')} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                          <ArrowRight className="h-3 w-3 inline ml-1" />
-                          بازگشت به ورود
-                        </button>
                       </>
                     )}
                   </motion.form>
@@ -281,12 +323,14 @@ export function AuthPage() {
                         </button>
                       </div>
                     </div>
+                    <div className="flex items-center justify-end">
+                      <button type="button" onClick={() => setMode('forgot')} className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 transition-colors cursor-pointer">
+                        رمز عبور را فراموش کرده‌اید؟
+                      </button>
+                    </div>
                     <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer" disabled={isLoading}>
-                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ورود'}
+                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ورود به حساب'}
                     </Button>
-                    <button type="button" onClick={() => setMode('forgot')} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                      رمز عبور را فراموش کرده‌اید؟
-                    </button>
                   </motion.form>
                 )}
 
@@ -339,12 +383,8 @@ export function AuthPage() {
                       )}
                     </div>
                     <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer" disabled={isLoading}>
-                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ثبت‌نام'}
+                      {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'ایجاد حساب جدید'}
                     </Button>
-                    <button type="button" onClick={() => setMode('login')} className="w-full text-center text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
-                      <ArrowRight className="h-3 w-3 inline ml-1" />
-                      قبلاً ثبت‌نام کرده‌اید؟ وارد شوید
-                    </button>
                   </motion.form>
                 )}
               </AnimatePresence>
